@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: '/Arduboy-Webtools/',
   root: '.',
   publicDir: 'public',
   build: {
