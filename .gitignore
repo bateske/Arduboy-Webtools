@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Node / Vite
+node_modules/
+dist/
+.DS_Store
+*.log
