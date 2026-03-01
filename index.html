@@ -146,11 +146,82 @@
         </div>
       </section>
 
-      <!-- Cart Editor Panel (placeholder) -->
+      <!-- Cart Editor Panel -->
       <section id="panel-cart" class="panel">
         <h2>Cart Editor</h2>
         <p class="panel-description">Edit, reorder, and manage your flash cart game collection.</p>
-        <p class="placeholder-note">🚧 Cart editor coming in a future phase.</p>
+
+        <!-- Toolbar -->
+        <div class="cart-toolbar">
+          <div class="cart-toolbar-group">
+            <button id="btn-cart-new" class="btn btn-sm btn-secondary" title="Create a new empty cart">New</button>
+            <button id="btn-cart-open" class="btn btn-sm btn-secondary" title="Open a cart .bin file">Open .bin</button>
+            <input type="file" id="cart-open-file" accept=".bin" class="file-input">
+            <button id="btn-cart-save" class="btn btn-sm btn-primary" title="Compile and save cart as .bin">Save .bin</button>
+          </div>
+          <div class="cart-toolbar-separator"></div>
+          <div class="cart-toolbar-group">
+            <button id="btn-cart-load-device" class="btn btn-sm btn-secondary" title="Load cart from connected device">Load from Device</button>
+            <button id="btn-cart-write-device" class="btn btn-sm btn-primary" title="Write cart to connected device">Write to Device</button>
+          </div>
+          <div class="cart-toolbar-separator"></div>
+          <div class="cart-toolbar-group">
+            <button id="btn-cart-export-slot" class="btn btn-sm btn-outline" title="Export selected slot as .arduboy">Export</button>
+            <button id="btn-cart-export-all" class="btn btn-sm btn-outline" title="Export all slots as .arduboy files in a ZIP">Export All</button>
+          </div>
+        </div>
+        <div class="cart-toolbar cart-toolbar-row2">
+          <div class="cart-toolbar-group">
+            <button id="btn-cart-move-up" class="btn btn-sm btn-outline btn-icon" title="Move slot up">&#x25B2;</button>
+            <button id="btn-cart-move-down" class="btn btn-sm btn-outline btn-icon" title="Move slot down">&#x25BC;</button>
+            <button id="btn-cart-move-cat-up" class="btn btn-sm btn-outline btn-icon" title="Move entire category up">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="4" x2="7" y2="1"/><line x1="7" y1="1" x2="11" y2="4"/><line x1="7" y1="1" x2="7" y2="10"/><line x1="3" y1="13" x2="11" y2="13"/>
+              </svg>
+            </button>
+            <button id="btn-cart-move-cat-down" class="btn btn-sm btn-outline btn-icon" title="Move entire category down">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="10" x2="7" y2="13"/><line x1="7" y1="13" x2="11" y2="10"/><line x1="7" y1="13" x2="7" y2="4"/><line x1="3" y1="1" x2="11" y2="1"/>
+              </svg>
+            </button>
+            <input type="text" id="cart-search" placeholder="Search slots..." class="cart-search-input">
+          </div>
+          <div class="cart-toolbar-separator"></div>
+          <div class="cart-toolbar-group">
+            <button id="btn-cart-add-game" class="btn btn-sm btn-secondary" title="Add game from .arduboy or .hex file">+ Game</button>
+            <input type="file" id="cart-game-file" accept=".arduboy,.hex" class="file-input">
+            <button id="btn-cart-add-category" class="btn btn-sm btn-secondary" title="Add new category header">+ Category</button>
+            <button id="btn-cart-delete" class="btn btn-sm btn-danger" title="Delete selected slot">Delete</button>
+            <button id="btn-cart-delete-category" class="btn btn-sm btn-danger" title="Delete entire category and all its games">Delete Category</button>
+            <label class="cart-confirm-delete-label" title="When checked, ask for confirmation before deleting">
+              <input type="checkbox" id="cart-confirm-delete" checked>Confirm
+            </label>
+          </div>
+        </div>
+
+        <!-- Main content: slot list + detail panel -->
+        <div class="cart-content">
+          <div class="cart-slot-list-container">
+            <div id="cart-slot-list" class="cart-slot-list">
+              <div class="cart-empty-state">
+                <p>No cart loaded</p>
+                <p class="cart-empty-hint">Open a .bin cart file, load from device, or create a new cart.<br>
+                You can also drag &amp; drop .arduboy or .hex files here.</p>
+              </div>
+            </div>
+          </div>
+          <div class="cart-resize-handle" id="cart-resize-handle"></div>
+          <div class="cart-detail-panel" id="cart-detail">
+            <div class="cart-detail-empty">
+              <p>Select a slot to view and edit its details</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="cart-footer">
+          <span id="cart-counts">No cart loaded</span>
+        </div>
       </section>
 
       <!-- Image Converter Panel (placeholder) -->
@@ -160,11 +231,102 @@
         <p class="placeholder-note">🚧 Image converter coming in a future phase.</p>
       </section>
 
-      <!-- Package Editor Panel (placeholder) -->
+      <!-- Package Editor Panel -->
       <section id="panel-package" class="panel">
         <h2>Package Editor</h2>
         <p class="panel-description">Create and edit .arduboy game packages.</p>
-        <p class="placeholder-note">🚧 Package editor coming in a future phase.</p>
+
+        <!-- Toolbar -->
+        <div class="pkg-toolbar">
+          <button class="btn btn-outline" id="btn-pkg-load">Load .arduboy</button>
+          <input type="file" id="pkg-load-file" accept=".arduboy" class="file-input">
+          <button class="btn btn-primary" id="btn-pkg-save">Save .arduboy</button>
+          <div class="cart-toolbar-separator"></div>
+          <button class="btn btn-danger" id="btn-pkg-reset">Reset</button>
+        </div>
+
+        <!-- Two-pane layout -->
+        <div class="pkg-content">
+          <!-- Left pane: Package Info -->
+          <div class="pkg-left-pane">
+            <h3 class="pkg-pane-title">Package Info</h3>
+
+            <!-- Fields pane (toggles with license pane) -->
+            <div id="pkg-fields-pane" class="pkg-fields-pane">
+              <div class="pkg-field-group">
+                <label class="pkg-label" for="pkg-title">Title *</label>
+                <input type="text" id="pkg-title" class="pkg-field-input" placeholder="Game title">
+              </div>
+              <div class="pkg-field-group">
+                <label class="pkg-label" for="pkg-version">Version *</label>
+                <input type="text" id="pkg-version" class="pkg-field-input" placeholder="1.0">
+              </div>
+              <div class="pkg-field-group">
+                <label class="pkg-label" for="pkg-author">Author *</label>
+                <input type="text" id="pkg-author" class="pkg-field-input" placeholder="Author name">
+              </div>
+              <div class="pkg-field-group">
+                <label class="pkg-label" for="pkg-description">Description</label>
+                <textarea id="pkg-description" class="pkg-field-textarea" rows="3" placeholder="Game description"></textarea>
+              </div>
+              <div class="pkg-field-group">
+                <label class="pkg-label" for="pkg-genre">Genre</label>
+                <input type="text" id="pkg-genre" class="pkg-field-input" placeholder="e.g. Puzzle, Action, RPG">
+              </div>
+              <div class="pkg-field-group">
+                <label class="pkg-label" for="pkg-url">URL</label>
+                <input type="text" id="pkg-url" class="pkg-field-input" placeholder="https://...">
+              </div>
+              <div class="pkg-field-group">
+                <label class="pkg-label" for="pkg-sourceurl">Source URL</label>
+                <input type="text" id="pkg-sourceurl" class="pkg-field-input" placeholder="https://github.com/...">
+              </div>
+              <div class="pkg-field-group">
+                <label class="pkg-label" for="pkg-email">Email</label>
+                <input type="text" id="pkg-email" class="pkg-field-input" placeholder="contact@example.com">
+              </div>
+
+              <!-- Contributors -->
+              <div class="pkg-section">
+                <h4 class="pkg-section-title">Contributors</h4>
+                <div class="pkg-contributors-controls">
+                  <button class="btn btn-sm btn-secondary" id="btn-pkg-add-contributor">+ Add</button>
+                  <button class="btn btn-sm btn-outline" id="btn-pkg-remove-contributor">- Remove</button>
+                </div>
+                <div class="pkg-contributors-wrap">
+                  <table id="pkg-contributors-table" class="pkg-contributors-table">
+                    <thead>
+                      <tr><th>Name</th><th>Roles</th><th>URLs</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- License -->
+              <div class="pkg-section">
+                <h4 class="pkg-section-title">LICENSE</h4>
+                <textarea id="pkg-license" class="pkg-license-textarea" rows="6" placeholder="Paste license text here (MIT, BSD, etc.)"></textarea>
+                <p class="pkg-license-help">Need help choosing? <a href="https://choosealicense.com/" target="_blank" rel="noopener">choosealicense.com</a></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pkg-resize-handle" id="pkg-resize-handle"></div>
+
+          <!-- Right pane: Binaries -->
+          <div class="pkg-right-pane" id="pkg-right-pane">
+            <h3 class="pkg-pane-title">Binaries</h3>
+            <div class="pkg-binary-toolbar">
+              <button class="btn btn-sm btn-secondary" id="btn-pkg-add-binary">+ Add Binary</button>
+              <button class="btn btn-sm btn-outline" id="btn-pkg-remove-binary">- Remove</button>
+            </div>
+            <div id="pkg-binary-list" class="pkg-binary-list"></div>
+            <div id="pkg-binary-detail" class="pkg-binary-detail">
+              <p class="pkg-binary-empty">No binary selected</p>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 

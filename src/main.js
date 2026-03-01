@@ -15,6 +15,8 @@ import { TabController } from './ui/tabs.js';
 import { ProgressController } from './ui/progress.js';
 import { showToast } from './ui/toast.js';
 import { readFileAsArrayBuffer, readFileAsText, downloadBlob, wireFileInput } from './ui/files.js';
+import { CartEditor } from './ui/cartEditor.js';
+import { PackageEditor } from './ui/packageEditor.js';
 
 // Core library
 import {
@@ -631,6 +633,176 @@ async function handleEepromErase() {
 $('#btn-eeprom-restore')?.addEventListener('click', handleEepromRestore);
 $('#btn-eeprom-backup')?.addEventListener('click', handleEepromBackup);
 $('#btn-eeprom-erase')?.addEventListener('click', handleEepromErase);
+
+// ---------------------------------------------------------------------------
+// Global Drag-and-Drop
+// ---------------------------------------------------------------------------
+
+// Extension → which tabs accept it and what the default is
+const DROP_ROUTES = {
+  '.hex':     { tabs: ['sketch', 'cart'], defaultTab: 'sketch' },
+  '.arduboy': { tabs: ['sketch', 'package', 'cart'], defaultTab: 'package' },
+  '.bin':     { tabs: ['fx', 'cart', 'eeprom'], defaultTab: 'fx' },
+  '.eep':     { tabs: ['eeprom'], defaultTab: 'eeprom' },
+};
+
+const TAB_LABELS = {
+  sketch: 'Sketch Manager',
+  fx: 'FX Flash',
+  eeprom: 'EEPROM',
+  cart: 'Cart Editor',
+  package: 'Package Editor',
+};
+
+// Build full-page drop overlay
+const dropOverlay = document.createElement('div');
+dropOverlay.className = 'page-drop-overlay';
+dropOverlay.innerHTML = `
+  <div class="drop-overlay-border"></div>
+  <div class="drop-overlay-content">
+    <span class="drop-overlay-icon">&#x1F4E5;</span>
+    <span class="drop-overlay-label">Drop file here</span>
+    <span class="drop-overlay-hint">.hex .bin .arduboy</span>
+  </div>`;
+document.getElementById('app').appendChild(dropOverlay);
+
+function resolveDropTarget(fileName) {
+  const name = fileName.toLowerCase();
+  for (const [ext, route] of Object.entries(DROP_ROUTES)) {
+    if (name.endsWith(ext)) {
+      const target = route.tabs.includes(tabs.current) ? tabs.current : route.defaultTab;
+      return { ext, target };
+    }
+  }
+  return null;
+}
+
+/** Populate a file-input label and cache the file, matching the manual-pick flow. */
+function loadFileIntoInput(file, labelSel, cacheKey) {
+  selectedFiles[cacheKey] = file;
+  const label = $(labelSel);
+  if (label) { label.textContent = file.name; label.classList.add('has-file'); }
+}
+
+async function handleDroppedFile(file, tab) {
+  const name = file.name.toLowerCase();
+
+  switch (tab) {
+    case 'sketch':
+      loadFileIntoInput(file, 'label[for="sketch-file"]', 'sketch');
+      showToast(`Loaded: ${file.name}`, 'info');
+      break;
+
+    case 'fx':
+      loadFileIntoInput(file, 'label[for="fx-file"]', 'fx');
+      showToast(`Loaded: ${file.name}`, 'info');
+      // Auto-scan cart info
+      try {
+        const buffer = await readFileAsArrayBuffer(file);
+        const data = new Uint8Array(buffer);
+        const info = scanFxCartHeaders(data);
+        if (info.count > 0) {
+          $('#file-scan-slots').textContent = info.count;
+          $('#file-scan-games').textContent = info.games;
+          $('#file-scan-categories').textContent = info.categories;
+          $('#file-scan-pages').textContent = info.totalPages.toLocaleString();
+          const sizeKB = data.length / 1024;
+          $('#file-scan-size').textContent = sizeKB >= 1024
+            ? `${(sizeKB / 1024).toFixed(1)} MB`
+            : `${sizeKB.toFixed(0)} KB`;
+          $('#fx-file-info')?.classList.remove('hidden');
+        } else {
+          $('#fx-file-info')?.classList.add('hidden');
+        }
+      } catch {
+        $('#fx-file-info')?.classList.add('hidden');
+      }
+      break;
+
+    case 'eeprom':
+      loadFileIntoInput(file, 'label[for="eeprom-file"]', 'eeprom');
+      showToast(`Loaded: ${file.name}`, 'info');
+      break;
+
+    case 'cart':
+      if (name.endsWith('.bin')) {
+        await cartEditor.openBinFile(file);
+      } else {
+        await cartEditor.addGameFromFile(file);
+      }
+      break;
+
+    case 'package':
+      await packageEditor._doLoad(file);
+      break;
+  }
+}
+
+// --- Global drag/drop listeners ---
+
+let _pageDragCounter = 0;
+
+// Capture phase: always clean up overlay & prevent browser default on any drop
+document.addEventListener('drop', (e) => {
+  e.preventDefault();
+  _pageDragCounter = 0;
+  dropOverlay.classList.remove('active');
+}, true);
+
+// Also block default on dragover so the drop event fires
+document.addEventListener('dragover', (e) => {
+  if (e.dataTransfer?.types?.includes('Files')) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }
+}, true);
+
+document.addEventListener('dragenter', (e) => {
+  if (!e.dataTransfer?.types?.includes('Files')) return;
+  _pageDragCounter++;
+  dropOverlay.classList.add('active');
+});
+
+document.addEventListener('dragleave', () => {
+  _pageDragCounter--;
+  if (_pageDragCounter <= 0) {
+    _pageDragCounter = 0;
+    dropOverlay.classList.remove('active');
+  }
+});
+
+// Bubble phase: route the file (won't fire if a child called stopPropagation)
+document.addEventListener('drop', async (e) => {
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+
+  const file = files[0];
+  const route = resolveDropTarget(file.name);
+  if (!route) {
+    showToast(`Unsupported file type: ${file.name}`, 'warning');
+    return;
+  }
+
+  // Switch to the target tab, then handle the file
+  tabs.activate(route.target);
+  await handleDroppedFile(file, route.target);
+});
+
+// ---------------------------------------------------------------------------
+// Cart Editor
+// ---------------------------------------------------------------------------
+
+const cartEditor = new CartEditor({
+  ensureDevice,
+  progress,
+  disconnectDevice,
+});
+
+// ---------------------------------------------------------------------------
+// Package Editor
+// ---------------------------------------------------------------------------
+
+const packageEditor = new PackageEditor();
 
 // ---------------------------------------------------------------------------
 // Init

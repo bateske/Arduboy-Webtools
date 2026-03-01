@@ -184,6 +184,10 @@ export function parseFxCart(fullData) {
 
 /**
  * Parse null-separated metadata strings from a header.
+ *
+ * Category slots store: title\0info\0  (2 fields)
+ * Program slots store:  title\0version\0developer\0info\0  (4 fields)
+ *
  * @param {Uint8Array} header - 256-byte header
  * @returns {FxSlotMeta}
  */
@@ -191,6 +195,19 @@ function parseMetaStrings(header) {
   const metaBytes = header.slice(FX_HEADER.META_START, FX_HEADER_SIZE);
   const str = decodeString(metaBytes);
   const parts = str.split('\0');
+
+  // Check if this is a category (program page = 0xFFFF means no program)
+  const programPage = readUint16BE(header, FX_HEADER.PROGRAM_PAGE);
+  if (programPage === 0xFFFF) {
+    // Category: title\0info
+    return {
+      title: parts[0] || '',
+      version: '',
+      developer: '',
+      info: parts[1] || '',
+    };
+  }
+  // Program: title\0version\0developer\0info
   return {
     title: parts[0] || '',
     version: parts[1] || '',
@@ -218,7 +235,7 @@ export async function compileFxCart(slots) {
   // First pass: compute sizes to determine page offsets
   const slotBinaries = [];
   let currentPage = 0;
-  let previousPage = 0;
+  let previousPage = 0xFFFF; // First slot has no predecessor
 
   for (let i = 0; i < fixedSlots.length; i++) {
     const slot = fixedSlots[i];
@@ -321,7 +338,17 @@ async function compileSingleSlot(slot, currentPage, previousPage) {
 
   // Sizes
   writeUint16BE(header, FX_HEADER.SLOT_SIZE, totalPages);
-  header[FX_HEADER.PROGRAM_SIZE] = program.length / FLASH_PAGESIZE;
+
+  // Program size in half-pages (128-byte units).
+  // Don't flash the last half-page if it's all 0xFF (matches Python reference).
+  let programFlashSize = program.length / FLASH_PAGESIZE;
+  if (programFlashSize > 0) {
+    const lastHalfPage = program.slice(program.length - FLASH_PAGESIZE);
+    if (lastHalfPage.every((b) => b === 0xFF)) {
+      programFlashSize--;
+    }
+  }
+  header[FX_HEADER.PROGRAM_SIZE] = programFlashSize;
   writeUint16BE(header, FX_HEADER.PROGRAM_PAGE, program.length > 0 ? programPage : 0xFFFF);
   writeUint16BE(header, FX_HEADER.DATA_PAGE, data.length > 0 ? dataPage : 0xFFFF);
   writeUint16BE(header, FX_HEADER.SAVE_PAGE, save.length > 0 ? savePage : 0xFFFF);
@@ -331,7 +358,15 @@ async function compileSingleSlot(slot, currentPage, previousPage) {
   header.set(hash, FX_HEADER.HASH);
 
   // Metadata strings
-  const metaStr = `${slot.meta.title}\0${slot.meta.version}\0${slot.meta.developer}\0${slot.meta.info}\0`;
+  // Categories store: title\0info\0  (2 fields)
+  // Programs store:   title\0version\0developer\0info\0  (4 fields)
+  let metaStr;
+  if (program.length === 0) {
+    // Category slot (including bootloader image)
+    metaStr = `${slot.meta.title}\0${slot.meta.info}\0`;
+  } else {
+    metaStr = `${slot.meta.title}\0${slot.meta.version}\0${slot.meta.developer}\0${slot.meta.info}\0`;
+  }
   const metaBytes = encodeString(metaStr);
   const metaLen = Math.min(metaBytes.length, FX_META_MAX_LENGTH);
   header.set(metaBytes.slice(0, metaLen), FX_HEADER.META_START);
@@ -356,31 +391,48 @@ async function compileSingleSlot(slot, currentPage, previousPage) {
 
 /**
  * Fix parsed slots for compilation:
- * - Ensure first slot is a category
- * - Assign sequential category IDs
+ * - Ensure first slot is the bootloader image (category 0)
+ * - Ensure second slot is a category (first game category)
+ * - Assign sequential category IDs starting from 0
+ *
+ * The Cathy3K bootloader reads the title image from page 0 of the
+ * FX flash. That image lives in the first slot (always a category
+ * with ID 0). The second slot must also be a category — this is
+ * the first actual game category shown in the bootloader menu.
  *
  * @param {FxParsedSlot[]} slots
  * @returns {FxParsedSlot[]}
  */
 function fixParsedSlots(slots) {
-  // Ensure at least one category at start
+  // Clone so we don't mutate the caller's array
+  slots = [...slots];
+
+  // Ensure slot 0 is a category (the bootloader image).
+  // If the first slot isn't a category, insert a blank bootloader image.
   if (slots.length === 0 || !slots[0].isCategory) {
-    const defaultCategory = new FxParsedSlot({
+    slots.unshift(new FxParsedSlot({
       category: 0,
-      meta: { title: 'Games', version: '', developer: '', info: '' },
-    });
-    slots = [defaultCategory, ...slots];
+      meta: { title: '', version: '', developer: '', info: '' },
+    }));
   }
 
-  // Assign category IDs
-  let categoryId = 0;
+  // Ensure slot 1 is also a category (first game category).
+  // The bootloader requires at least two categories.
+  if (slots.length < 2 || !slots[1].isCategory) {
+    slots.splice(1, 0, new FxParsedSlot({
+      category: 1,
+      meta: { title: 'Games', version: '', developer: '', info: '' },
+    }));
+  }
+
+  // Assign category IDs starting from 0 (matching Python reference).
+  // Category 0 = bootloader image, 1 = first game category, etc.
+  let categoryId = -1;
   for (const slot of slots) {
     if (slot.isCategory) {
       categoryId++;
-      slot.category = categoryId;
-    } else {
-      slot.category = categoryId;
     }
+    slot.category = categoryId;
   }
 
   return slots;

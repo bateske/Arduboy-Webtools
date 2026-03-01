@@ -22,8 +22,8 @@
   --color-bg-elevated: rgba(25, 25, 50, 0.5);
   --color-bg-card: rgba(30, 30, 60, 0.4);
   --color-text: #e8eaf0;
-  --color-text-secondary: #8b8fa8;
-  --color-text-muted: #555a70;
+  --color-text-secondary: rgb(178, 184, 214);
+  --color-text-muted: rgb(139, 143, 167);
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-subtle: rgba(255, 255, 255, 0.04);
 

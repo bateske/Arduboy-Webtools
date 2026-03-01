@@ -79,6 +79,35 @@ export async function readArduboyFile(fileData, filename = 'unknown.arduboy') {
   // Parse contributors (handle v2/v3 → v4 upgrade)
   const contributors = parseContributors(info);
 
+  // Pre-load a fallback image: try cart.png, then banner field, then any .png in ZIP
+  let fallbackImageBlob = null;
+  const fallbackCandidates = ['cart.png'];
+  if (info.banner) fallbackCandidates.push(info.banner);
+  for (const candidate of fallbackCandidates) {
+    const file = findFileInZip(zip, candidate);
+    if (file) {
+      const blob = await file.async('blob');
+      try {
+        await createImageBitmap(blob); // validate it's a real image
+        fallbackImageBlob = blob;
+        break;
+      } catch { /* not a valid image */ }
+    }
+  }
+  // Last resort: find any .png file in the ZIP
+  if (!fallbackImageBlob) {
+    for (const [path, entry] of Object.entries(zip.files)) {
+      if (!entry.dir && path.toLowerCase().endsWith('.png')) {
+        const blob = await entry.async('blob');
+        try {
+          await createImageBitmap(blob);
+          fallbackImageBlob = blob;
+          break;
+        } catch { /* skip */ }
+      }
+    }
+  }
+
   // Parse binaries
   const binaries = [];
   const binaryList = info.binaries || [];
@@ -117,17 +146,31 @@ export async function readArduboyFile(fileData, filename = 'unknown.arduboy') {
       }
     }
 
-    // Extract cart image
-    cartImageFilename = bin.cartImage || bin.image || '';
+    // Extract cart image — handle all known field names:
+    //   cartImage (camelCase, our writer), cartimage (lowercase, toolset), image (legacy)
+    let cartImageBlob = null;
+    cartImageFilename = bin.cartImage || bin.cartimage || bin.image || '';
     if (cartImageFilename) {
       const imageFile = findFileInZip(zip, cartImageFilename);
       if (imageFile) {
         const imageBlob = await imageFile.async('blob');
         try {
           cartImage = await createImageBitmap(imageBlob);
+          cartImageBlob = imageBlob;
         } catch {
           // Image decode failed — leave null
         }
+      }
+    }
+
+    // Fallback: use the pre-loaded fallback image (cart.png, banner, or any .png)
+    if (!cartImageBlob && fallbackImageBlob) {
+      try {
+        cartImage = await createImageBitmap(fallbackImageBlob);
+        cartImageBlob = fallbackImageBlob;
+        cartImageFilename = 'cart.png';
+      } catch {
+        // ignore
       }
     }
 
@@ -140,6 +183,7 @@ export async function readArduboyFile(fileData, filename = 'unknown.arduboy') {
       saveRaw,
       cartImage,
       cartImageFilename,
+      cartImageBlob,
     });
   }
 
@@ -195,14 +239,23 @@ export async function writeArduboyFile(pkg) {
       roles: c.roles,
       urls: c.urls,
     })),
-    binaries: pkg.binaries.map((b) => ({
-      title: b.title,
-      filename: b.hexFilename,
-      flashdata: b.dataRaw.length > 0 ? getDataFilename(b.hexFilename) : undefined,
-      flashsave: b.saveRaw.length > 0 ? getSaveFilename(b.hexFilename) : undefined,
-      device: b.device,
-      cartImage: b.cartImageFilename || undefined,
-    })),
+    binaries: pkg.binaries.map((b) => {
+      const entry = {
+        title: b.title,
+        filename: b.hexFilename,
+        device: b.device,
+      };
+      if (b.dataRaw && b.dataRaw.length > 0) {
+        entry.flashdata = getDataFilename(b.hexFilename);
+      }
+      if (b.saveRaw && b.saveRaw.length > 0) {
+        entry.flashsave = getSaveFilename(b.hexFilename);
+      }
+      if (b.cartImageFilename) {
+        entry.cartImage = b.cartImageFilename;
+      }
+      return entry;
+    }),
   };
 
   zip.file('info.json', JSON.stringify(info, null, 2));
@@ -212,11 +265,15 @@ export async function writeArduboyFile(pkg) {
     if (bin.hexRaw) {
       zip.file(bin.hexFilename, bin.hexRaw);
     }
-    if (bin.dataRaw.length > 0) {
+    if (bin.dataRaw && bin.dataRaw.length > 0) {
       zip.file(getDataFilename(bin.hexFilename), bin.dataRaw);
     }
-    if (bin.saveRaw.length > 0) {
+    if (bin.saveRaw && bin.saveRaw.length > 0) {
       zip.file(getSaveFilename(bin.hexFilename), bin.saveRaw);
+    }
+    // Write cart image blob/arraybuffer if provided
+    if (bin.cartImageBlob) {
+      zip.file(bin.cartImageFilename, bin.cartImageBlob);
     }
   }
 
