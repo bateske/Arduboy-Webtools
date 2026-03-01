@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arduboy Web Tools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Fallback CSS links (also imported via JS for Vite HMR) -->
+  <link rel="stylesheet" href="/src/ui/styles/variables.css">
+  <link rel="stylesheet" href="/src/ui/styles/main.css">
+  <link rel="stylesheet" href="/src/ui/styles/components.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Navigation -->
+    <nav id="navbar" class="navbar">
+      <div class="navbar-brand">
+        <span class="brand-icon">🎮</span>
+        <span class="brand-text">Arduboy Web Tools</span>
+      </div>
+      <div class="navbar-tabs">
+        <button class="tab-btn active" data-panel="sketch">Sketch</button>
+        <button class="tab-btn" data-panel="fx">FX Flash</button>
+        <button class="tab-btn" data-panel="eeprom">EEPROM</button>
+        <button class="tab-btn" data-panel="cart">Cart Editor</button>
+        <button class="tab-btn" data-panel="image">Image</button>
+        <button class="tab-btn" data-panel="package">Package</button>
+      </div>
+      <div class="navbar-actions">
+        <button class="btn-reset" id="btn-reset" disabled title="Reset device into bootloader">
+          &#x21bb; Reset
+        </button>
+        <button class="btn-status" id="connection-status" title="Click to connect/disconnect">
+          <span class="status-dot disconnected"></span>
+          <span class="status-text">No device</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Panel Container -->
+    <main id="panels" class="panels">
+      <!-- Sketch Panel -->
+      <section id="panel-sketch" class="panel active">
+        <h2>Sketch Manager</h2>
+        <p class="panel-description">Upload, backup, or erase the game stored on your Arduboy.</p>
+
+        <div class="action-group">
+          <h3>Upload Sketch</h3>
+          <div class="file-input-row">
+            <input type="file" id="sketch-file" accept=".hex,.arduboy" class="file-input">
+            <label for="sketch-file" class="file-label">Choose .hex or .arduboy file</label>
+          </div>
+          <div class="action-row">
+            <button id="btn-sketch-upload" class="btn btn-primary">Upload Sketch</button>
+            <div class="options-row">
+              <label><input type="checkbox" id="sketch-verify" checked> Verify after write</label>
+              <label><input type="checkbox" id="sketch-patch-ssd1309"> SSD1309 display patch</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-group">
+          <h3>Backup & Erase</h3>
+          <div class="button-row">
+            <button id="btn-sketch-backup" class="btn btn-secondary">Backup Sketch</button>
+            <button id="btn-sketch-erase" class="btn btn-danger">Erase Sketch</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- FX Flash Panel -->
+      <section id="panel-fx" class="panel">
+        <h2>FX Flash Manager</h2>
+        <p class="panel-description">Manage the external flash memory (game collection, FX data).</p>
+
+        <div class="action-group">
+          <h3>Write Flash Cart</h3>
+          <div class="file-input-row">
+            <input type="file" id="fx-file" accept=".bin" class="file-input">
+            <label for="fx-file" class="file-label">Choose .bin flash image</label>
+          </div>
+          <div id="fx-file-info" class="info-box hidden">
+            <h4>File Cart Summary</h4>
+            <dl class="info-grid">
+              <dt>Total Slots</dt><dd id="file-scan-slots">—</dd>
+              <dt>Games</dt><dd id="file-scan-games">—</dd>
+              <dt>Categories</dt><dd id="file-scan-categories">—</dd>
+              <dt>Used Pages</dt><dd id="file-scan-pages">—</dd>
+              <dt>File Size</dt><dd id="file-scan-size">—</dd>
+            </dl>
+          </div>
+          <div class="action-row">
+            <button id="btn-fx-write" class="btn btn-primary">Write to FX Flash</button>
+            <div class="options-row">
+              <label><input type="checkbox" id="fx-verify"> Verify after write</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-group">
+          <h3>Backup & Info</h3>
+          <div class="action-row">
+            <div class="button-row">
+              <button id="btn-fx-backup" class="btn btn-secondary">Backup FX Flash</button>
+              <button id="btn-fx-scan" class="btn btn-secondary">Scan Cart Info</button>
+            </div>
+            <div class="options-row">
+              <label><input type="checkbox" id="fx-cart-only" checked> Cart data only (faster)</label>
+            </div>
+          </div>
+          <div id="fx-scan-results" class="info-box hidden">
+            <h4>Cart Summary</h4>
+            <dl class="info-grid">
+              <dt>Total Slots</dt><dd id="scan-slots">—</dd>
+              <dt>Games</dt><dd id="scan-games">—</dd>
+              <dt>Categories</dt><dd id="scan-categories">—</dd>
+              <dt>Used Pages</dt><dd id="scan-pages">—</dd>
+              <dt>Used Space</dt><dd id="scan-size">—</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <!-- EEPROM Panel -->
+      <section id="panel-eeprom" class="panel">
+        <h2>EEPROM Manager</h2>
+        <p class="panel-description">Backup, restore, or erase the 1KB EEPROM (game saves).</p>
+
+        <div class="action-group">
+          <h3>Restore EEPROM</h3>
+          <div class="file-input-row">
+            <input type="file" id="eeprom-file" accept=".bin,.eep" class="file-input">
+            <label for="eeprom-file" class="file-label">Choose EEPROM backup file</label>
+          </div>
+          <button id="btn-eeprom-restore" class="btn btn-primary">Restore EEPROM</button>
+        </div>
+
+        <div class="action-group">
+          <h3>Backup & Erase</h3>
+          <div class="button-row">
+            <button id="btn-eeprom-backup" class="btn btn-secondary">Backup EEPROM</button>
+            <button id="btn-eeprom-erase" class="btn btn-danger">Erase EEPROM</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cart Editor Panel (placeholder) -->
+      <section id="panel-cart" class="panel">
+        <h2>Cart Editor</h2>
+        <p class="panel-description">Edit, reorder, and manage your flash cart game collection.</p>
+        <p class="placeholder-note">🚧 Cart editor coming in a future phase.</p>
+      </section>
+
+      <!-- Image Converter Panel (placeholder) -->
+      <section id="panel-image" class="panel">
+        <h2>Image Converter</h2>
+        <p class="panel-description">Convert images to Arduboy sprite format (C++ code or FX binary).</p>
+        <p class="placeholder-note">🚧 Image converter coming in a future phase.</p>
+      </section>
+
+      <!-- Package Editor Panel (placeholder) -->
+      <section id="panel-package" class="panel">
+        <h2>Package Editor</h2>
+        <p class="panel-description">Create and edit .arduboy game packages.</p>
+        <p class="placeholder-note">🚧 Package editor coming in a future phase.</p>
+      </section>
+    </main>
+
+    <!-- Progress Dialog (hidden by default) -->
+    <div id="progress-overlay" class="modal-overlay hidden">
+      <div class="modal-card progress-card">
+        <h3 id="progress-title">Working...</h3>
+        <div class="progress-bar-container">
+          <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+        </div>
+        <p id="progress-status" class="progress-status">Initializing...</p>
+        <p id="progress-percent" class="progress-percent">0%</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
