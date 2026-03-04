@@ -1120,6 +1120,34 @@ export class CartEditor {
     this._renderSlotList();
     this._renderDetail();
     this._updateCounts();
+    this._updateControlsVisibility();
+  }
+
+  /** Update UI controls visibility based on whether a cart is loaded. */
+  _updateControlsVisibility() {
+    const hasCart = this.slots.length > 0;
+    const saveBtn = document.getElementById('btn-cart-save');
+    const writeBtn = document.getElementById('btn-cart-write-device');
+    const ssd1309Label = document.getElementById('cart-patch-ssd1309-label');
+    const exportGroup = document.getElementById('cart-export-group');
+    const row2 = document.getElementById('cart-toolbar-row2');
+    const content = document.getElementById('cart-content');
+
+    if (hasCart) {
+      if (saveBtn) saveBtn.disabled = false;
+      if (writeBtn) writeBtn.disabled = false;
+      if (ssd1309Label) ssd1309Label.classList.remove('hidden');
+      if (exportGroup) exportGroup.classList.remove('hidden');
+      if (row2) row2.classList.remove('hidden');
+      if (content) content.classList.remove('hidden');
+    } else {
+      if (saveBtn) saveBtn.disabled = true;
+      if (writeBtn) writeBtn.disabled = true;
+      if (ssd1309Label) ssd1309Label.classList.add('hidden');
+      if (exportGroup) exportGroup.classList.add('hidden');
+      if (row2) row2.classList.add('hidden');
+      if (content) content.classList.add('hidden');
+    }
   }
 
   /** Render the scrollable slot list. */

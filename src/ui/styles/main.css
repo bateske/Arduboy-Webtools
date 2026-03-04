@@ -58,6 +58,41 @@ body::after {
 }
 
 /* =============================================================================
+   Scrollbar Styling
+   ============================================================================= */
+
+/* Firefox scrollbar styling */
+.panel {
+  scrollbar-color: var(--color-primary) rgba(255, 255, 255, 0.05);
+
+}
+
+
+
+.panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background var(--transition-fast);
+}
+
+.panel::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-light);
+  background-clip: padding-box;
+}
+
+.panel::-webkit-scrollbar-thumb:active {
+  background: var(--color-primary-dark);
+  background-clip: padding-box;
+}
+
+/* =============================================================================
    Navigation Bar
    ============================================================================= */
 
@@ -202,7 +237,7 @@ body::after {
 .panels {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-xl);
+  padding:  var(--space-xl) var(--space-xl) 0 var(--space-xl);
 }
 
 .panel {

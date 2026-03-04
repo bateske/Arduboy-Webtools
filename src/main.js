@@ -18,6 +18,7 @@ import { showConfirm } from './ui/modal.js';
 import { readFileAsArrayBuffer, readFileAsText, downloadBlob, wireFileInput } from './ui/files.js';
 import { CartEditor } from './ui/cartEditor.js';
 import { PackageEditor } from './ui/packageEditor.js';
+import { ImageConverter } from './ui/imageConverter.js';
 
 // Core library
 import {
@@ -213,6 +214,9 @@ if (sketchInput) {
       selectedFiles['sketch'] = file;
       const label = $('label[for="sketch-file"]');
       if (label) { label.textContent = file.name; label.classList.add('has-file'); }
+      // Show upload controls when file is selected
+      const controls = $('#sketch-upload-controls');
+      if (controls) { controls.classList.remove('hidden'); }
     }
   });
 }
@@ -224,6 +228,10 @@ if (fxInput) {
       selectedFiles['fx'] = file;
       const label = $('label[for="fx-file"]');
       if (label) { label.textContent = file.name; label.classList.add('has-file'); }
+
+      // Show write controls when file is selected
+      const controls = $('#fx-write-controls');
+      if (controls) { controls.classList.remove('hidden'); }
 
       // Scan the .bin file locally and show cart info
       try {
@@ -259,6 +267,9 @@ if (eepromInput) {
       selectedFiles['eeprom'] = file;
       const label = $('label[for="eeprom-file"]');
       if (label) { label.textContent = file.name; label.classList.add('has-file'); }
+      // Show restore button when file is selected
+      const btn = $('#btn-eeprom-restore');
+      if (btn) { btn.classList.remove('hidden'); btn.style.display = ''; }
     }
   });
 }
@@ -665,6 +676,12 @@ const DROP_ROUTES = {
   '.arduboy': { tabs: ['sketch', 'package', 'cart'], defaultTab: 'package' },
   '.bin':     { tabs: ['fx', 'cart', 'eeprom'], defaultTab: 'fx' },
   '.eep':     { tabs: ['eeprom'], defaultTab: 'eeprom' },
+  '.png':     { tabs: ['image'], defaultTab: 'image' },
+  '.jpg':     { tabs: ['image'], defaultTab: 'image' },
+  '.jpeg':    { tabs: ['image'], defaultTab: 'image' },
+  '.gif':     { tabs: ['image'], defaultTab: 'image' },
+  '.bmp':     { tabs: ['image'], defaultTab: 'image' },
+  '.webp':    { tabs: ['image'], defaultTab: 'image' },
 };
 
 const TAB_LABELS = {
@@ -672,18 +689,34 @@ const TAB_LABELS = {
   fx: 'FX Flash',
   eeprom: 'EEPROM',
   cart: 'Cart Editor',
+  image: 'Image Converter',
   package: 'Package Editor',
 };
 
 // Build full-page drop overlay
 const dropOverlay = document.createElement('div');
 dropOverlay.className = 'page-drop-overlay';
+const fileTypes = ['.hex', '.bin', '.arduboy', 'Image'];
+const fileTypesHTML = fileTypes.map(ext => `
+  <div class="file-type-card">
+    <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" class="file-svg">
+      <!-- Paper body with rounded corners and clean 45-degree fold -->
+      <path d="M 5,12 L 5,110 Q 5,118 12,118 L 88,118 Q 95,118 95,110 L 95,21 L 76,5 L 12,5 Q 5,5 5,12 Z" fill="rgba(139,45,180,0.12)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- Fold flap with minimal fill -->
+      <path d="M 76,5 L 95,21 L 76,21 Z" fill="rgba(255,255,255,0.12)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- Extension label -->
+      <text x="50" y="70" text-anchor="middle" dominant-baseline="middle" fill="white" class="file-text">${ext}</text>
+    </svg>
+  </div>
+`).join('');
 dropOverlay.innerHTML = `
   <div class="drop-overlay-border"></div>
   <div class="drop-overlay-content">
     <span class="drop-overlay-icon">&#x1F4E5;</span>
     <span class="drop-overlay-label">Drop file here</span>
-    <span class="drop-overlay-hint">.hex .bin .arduboy</span>
+    <div class="drop-overlay-file-types">
+      ${fileTypesHTML}
+    </div>
   </div>`;
 document.getElementById('app').appendChild(dropOverlay);
 
@@ -767,6 +800,11 @@ async function handleDroppedFile(file, tab) {
     case 'package':
       await packageEditor._doLoad(file);
       break;
+
+    case 'image':
+      await imageConverter.loadFile(file);
+      showToast(`Loaded: ${file.name}`, 'info');
+      break;
   }
 }
 
@@ -844,6 +882,12 @@ const cartEditor = new CartEditor({
 // ---------------------------------------------------------------------------
 
 const packageEditor = new PackageEditor();
+
+// ---------------------------------------------------------------------------
+// Image Converter
+// ---------------------------------------------------------------------------
+
+const imageConverter = new ImageConverter();
 
 // ---------------------------------------------------------------------------
 // Init

@@ -11,6 +11,15 @@
 
 import { SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BYTES } from '../constants.js';
 
+/** Supported output format identifiers. */
+export const OUTPUT_FORMAT = {
+  DRAW_BITMAP:       'drawBitmap',
+  DRAW_SLOW_XY:      'drawSlowXYBitmap',
+  SPRITES_OVERWRITE: 'spritesOverwrite',
+  SPRITES_EXT_MASK:  'spritesExternalMask',
+  SPRITES_PLUS_MASK: 'spritesPlusMask',
+};
+
 /**
  * @typedef {Object} TileConfig
  * @property {number} width - Tile width in pixels (0 = full image width)
@@ -28,6 +37,15 @@ import { SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BYTES } from '../constants.js';
  * @property {number} frameCount - Number of frames/tiles
  * @property {number} frameWidth - Width per frame
  * @property {number} frameHeight - Height per frame
+ */
+
+/**
+ * @typedef {Object} ImageConvertConfig
+ * @property {string} format - One of OUTPUT_FORMAT values
+ * @property {number} width - Frame width (0 = full image width)
+ * @property {number} height - Frame height (0 = full image height)
+ * @property {number} spacing - Spacing between frames in pixels
+ * @property {number} threshold - Brightness threshold (0-255, default 128)
  */
 
 /**
@@ -321,6 +339,418 @@ function generateSpriteCode(name, width, height, frameCount, imageBytes, maskByt
       lines.push('};');
     }
   }
+
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// New image loader — preserves original dimensions (for sprite sheets)
+// ---------------------------------------------------------------------------
+
+/**
+ * Load an image file preserving its original dimensions.
+ * Unlike loadImageFile(), this does NOT resize to 128×64.
+ *
+ * @param {File|Blob} file - Image file
+ * @returns {Promise<ImageData>} ImageData at original size
+ */
+export async function loadImageFileOriginal(file) {
+  const bitmap = await createImageBitmap(file);
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0);
+  return ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+}
+
+// ---------------------------------------------------------------------------
+// Internal byte-packing helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Pack a single frame region in vertical-byte-column format.
+ * Bit 0 = top pixel of 8-pixel strip, bit 7 = bottom.
+ *
+ * @returns {{ imageBytes: number[], maskBytes: number[] }}
+ */
+function packVertical(pixels, startX, startY, fw, paddedHeight, imgWidth, imgHeight, threshold) {
+  const imageBytes = [];
+  const maskBytes = [];
+
+  for (let yStrip = 0; yStrip < paddedHeight; yStrip += 8) {
+    for (let x = 0; x < fw; x++) {
+      let imgByte = 0;
+      let maskByte = 0;
+
+      for (let bit = 0; bit < 8; bit++) {
+        const srcX = startX + x;
+        const srcY = startY + yStrip + bit;
+
+        if (srcX < imgWidth && srcY < imgHeight) {
+          const idx = (srcY * imgWidth + srcX) * 4;
+          const brightness = pixels[idx + 1]; // green channel
+          const alpha = pixels[idx + 3];
+
+          if (brightness > threshold) {
+            imgByte |= 1 << bit;
+          }
+          if (alpha > 128) {
+            maskByte |= 1 << bit;
+          }
+        }
+      }
+
+      imageBytes.push(imgByte);
+      maskBytes.push(maskByte);
+    }
+  }
+
+  return { imageBytes, maskBytes };
+}
+
+/**
+ * Pack a single frame region in horizontal row-major format.
+ * MSB (bit 7) = leftmost pixel, LSB (bit 0) = rightmost.
+ * Each byte = 8 horizontal pixels. Rows padded to ceil(width/8) bytes.
+ *
+ * @returns {number[]}
+ */
+function packHorizontal(pixels, startX, startY, fw, fh, imgWidth, imgHeight, threshold) {
+  const bytes = [];
+  const bytesPerRow = Math.ceil(fw / 8);
+
+  for (let y = 0; y < fh; y++) {
+    for (let byteCol = 0; byteCol < bytesPerRow; byteCol++) {
+      let byte = 0;
+      for (let bit = 0; bit < 8; bit++) {
+        const px = startX + byteCol * 8 + bit;
+        const py = startY + y;
+        if (px < imgWidth && py < imgHeight && (byteCol * 8 + bit) < fw) {
+          const idx = (py * imgWidth + px) * 4;
+          const brightness = pixels[idx + 1];
+          if (brightness > threshold) {
+            byte |= 1 << (7 - bit); // MSB = leftmost
+          }
+        }
+      }
+      bytes.push(byte);
+    }
+  }
+
+  return bytes;
+}
+
+// ---------------------------------------------------------------------------
+// Format-specific converter
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert an image to Arduboy format with format selection.
+ *
+ * @param {ImageData} imageData - Source image (any dimensions)
+ * @param {string} name - C++ variable name
+ * @param {ImageConvertConfig} config
+ * @returns {{ code: string, frameCount: number, frameWidth: number, frameHeight: number, paddedHeight: number, byteCount: number }}
+ */
+export function convertImageFormat(imageData, name, config) {
+  const imgWidth = imageData.width;
+  const imgHeight = imageData.height;
+  const pixels = imageData.data;
+  const format = config.format || OUTPUT_FORMAT.SPRITES_OVERWRITE;
+  const threshold = config.threshold ?? 128;
+
+  const fw = config.width || imgWidth;
+  const fh = config.height || imgHeight;
+  const spacing = config.spacing || 0;
+
+  const cols = Math.max(1, Math.floor((imgWidth + spacing) / (fw + spacing)));
+  const rows = Math.max(1, Math.floor((imgHeight + spacing) / (fh + spacing)));
+  const maxFrames = config.maxFrames || Infinity;
+  const frameCount = Math.min(cols * rows, maxFrames);
+
+  const paddedHeight = Math.ceil(fh / 8) * 8;
+  const isHorizontal = format === OUTPUT_FORMAT.DRAW_SLOW_XY;
+
+  const allImageBytes = [];
+  const allMaskBytes = [];
+
+  for (let frame = 0; frame < frameCount; frame++) {
+    const frameCol = frame % cols;
+    const frameRow = Math.floor(frame / cols);
+    const startX = frameCol * (fw + spacing);
+    const startY = frameRow * (fh + spacing);
+
+    if (isHorizontal) {
+      const bytes = packHorizontal(pixels, startX, startY, fw, fh, imgWidth, imgHeight, threshold);
+      allImageBytes.push(...bytes);
+    } else {
+      const { imageBytes, maskBytes } = packVertical(
+        pixels, startX, startY, fw, paddedHeight, imgWidth, imgHeight, threshold,
+      );
+      allImageBytes.push(...imageBytes);
+      allMaskBytes.push(...maskBytes);
+    }
+  }
+
+  const code = generateFormatCode(name, format, fw, fh, paddedHeight, frameCount, allImageBytes, allMaskBytes);
+
+  return {
+    code,
+    frameCount,
+    frameWidth: fw,
+    frameHeight: fh,
+    paddedHeight,
+    byteCount: allImageBytes.length + (
+      format === OUTPUT_FORMAT.SPRITES_EXT_MASK ? allMaskBytes.length :
+      format === OUTPUT_FORMAT.SPRITES_PLUS_MASK ? allImageBytes.length : 0
+    ),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Format-specific C++ code generation
+// ---------------------------------------------------------------------------
+
+/** Format a byte array as hex strings, 12 values per line. */
+function formatHexLines(bytes, indent = '  ') {
+  const lines = [];
+  const hex = bytes.map((b) => `0x${b.toString(16).padStart(2, '0')}`);
+  for (let i = 0; i < hex.length; i += 12) {
+    lines.push(indent + hex.slice(i, i + 12).join(', ') + ',');
+  }
+  return lines;
+}
+
+/**
+ * Generate C++ PROGMEM code for a specific output format.
+ */
+function generateFormatCode(name, format, fw, fh, paddedHeight, frameCount, imageBytes, maskBytes) {
+  const lines = [];
+  lines.push('#pragma once');
+  lines.push('#include <stdint.h>');
+  lines.push('#include <avr/pgmspace.h>\n');
+
+  const bytesPerFrame = imageBytes.length / frameCount;
+
+  switch (format) {
+    // -- drawBitmap: no header, vertical format --
+    case OUTPUT_FORMAT.DRAW_BITMAP: {
+      lines.push(`// ${fw}x${paddedHeight}, ${frameCount} frame(s), ${imageBytes.length} bytes`);
+      lines.push(`// Render with: Arduboy2Base::drawBitmap(x, y, ${name}, ${fw}, ${paddedHeight}, WHITE);`);
+      lines.push(`const uint8_t PROGMEM ${name}[] = {`);
+      for (let f = 0; f < frameCount; f++) {
+        if (frameCount > 1) lines.push(`  // Frame ${f}`);
+        const start = f * bytesPerFrame;
+        lines.push(...formatHexLines(imageBytes.slice(start, start + bytesPerFrame)));
+      }
+      lines.push('};');
+      break;
+    }
+
+    // -- drawSlowXYBitmap: no header, horizontal format --
+    case OUTPUT_FORMAT.DRAW_SLOW_XY: {
+      lines.push(`// ${fw}x${fh}, ${frameCount} frame(s), ${imageBytes.length} bytes`);
+      lines.push(`// Render with: Arduboy2Base::drawSlowXYBitmap(x, y, ${name}, ${fw}, ${fh}, WHITE);`);
+      lines.push(`const uint8_t PROGMEM ${name}[] = {`);
+      for (let f = 0; f < frameCount; f++) {
+        if (frameCount > 1) lines.push(`  // Frame ${f}`);
+        const start = f * bytesPerFrame;
+        lines.push(...formatHexLines(imageBytes.slice(start, start + bytesPerFrame)));
+      }
+      lines.push('};');
+      break;
+    }
+
+    // -- Sprites overwrite: [w, h] header, vertical format --
+    case OUTPUT_FORMAT.SPRITES_OVERWRITE: {
+      lines.push(`// ${fw}x${paddedHeight}, ${frameCount} frame(s), ${imageBytes.length + 2} bytes`);
+      lines.push(`// Render with: Sprites::drawOverwrite(x, y, ${name}, frame);`);
+      lines.push(`const uint8_t PROGMEM ${name}[] = {`);
+      lines.push(`  ${fw}, ${paddedHeight},`);
+      for (let f = 0; f < frameCount; f++) {
+        if (frameCount > 1) lines.push(`  // Frame ${f}`);
+        const start = f * bytesPerFrame;
+        lines.push(...formatHexLines(imageBytes.slice(start, start + bytesPerFrame)));
+      }
+      lines.push('};');
+      break;
+    }
+
+    // -- Sprites external mask: image array [w,h]+data, mask array data only --
+    case OUTPUT_FORMAT.SPRITES_EXT_MASK: {
+      const maskBytesPerFrame = maskBytes.length / frameCount;
+      lines.push(`// ${fw}x${paddedHeight}, ${frameCount} frame(s)`);
+      lines.push(`// Image: ${imageBytes.length + 2} bytes, Mask: ${maskBytes.length} bytes`);
+      lines.push(`// Render with: Sprites::drawExternalMask(x, y, ${name}, ${name}Mask, frame, 0);`);
+      lines.push(`const uint8_t PROGMEM ${name}[] = {`);
+      lines.push(`  ${fw}, ${paddedHeight},`);
+      for (let f = 0; f < frameCount; f++) {
+        if (frameCount > 1) lines.push(`  // Frame ${f}`);
+        const start = f * bytesPerFrame;
+        lines.push(...formatHexLines(imageBytes.slice(start, start + bytesPerFrame)));
+      }
+      lines.push('};\n');
+      lines.push(`const uint8_t PROGMEM ${name}Mask[] = {`);
+      for (let f = 0; f < frameCount; f++) {
+        if (frameCount > 1) lines.push(`  // Frame ${f}`);
+        const start = f * maskBytesPerFrame;
+        lines.push(...formatHexLines(maskBytes.slice(start, start + maskBytesPerFrame)));
+      }
+      lines.push('};');
+      break;
+    }
+
+    // -- Sprites plus-mask: [w, h] header, interleaved (image, mask) pairs --
+    case OUTPUT_FORMAT.SPRITES_PLUS_MASK: {
+      lines.push(`// ${fw}x${paddedHeight}, ${frameCount} frame(s), ${imageBytes.length * 2 + 2} bytes`);
+      lines.push(`// Render with: Sprites::drawPlusMask(x, y, ${name}, frame);`);
+      lines.push(`const uint8_t PROGMEM ${name}[] = {`);
+      lines.push(`  ${fw}, ${paddedHeight},`);
+      for (let f = 0; f < frameCount; f++) {
+        if (frameCount > 1) lines.push(`  // Frame ${f}`);
+        const start = f * bytesPerFrame;
+        const interleaved = [];
+        for (let i = 0; i < bytesPerFrame; i++) {
+          interleaved.push(imageBytes[start + i]);
+          interleaved.push(maskBytes[start + i]);
+        }
+        lines.push(...formatHexLines(interleaved));
+      }
+      lines.push('};');
+      break;
+    }
+  }
+
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Usage snippet & full sketch generators
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate the appropriate Arduboy2 draw call snippet for a format.
+ *
+ * @param {string} name - Variable name
+ * @param {string} format - One of OUTPUT_FORMAT values
+ * @param {number} fw - Frame width
+ * @param {number} fh - Frame height (padded for vertical formats)
+ * @param {number} frameCount - Number of frames
+ * @returns {string}
+ */
+export function generateUsageSnippet(name, format, fw, fh, frameCount) {
+  switch (format) {
+    case OUTPUT_FORMAT.DRAW_BITMAP:
+      return `arduboy.drawBitmap(0, 0, ${name}, ${fw}, ${fh}, WHITE);`;
+    case OUTPUT_FORMAT.DRAW_SLOW_XY:
+      return `arduboy.drawSlowXYBitmap(0, 0, ${name}, ${fw}, ${fh}, WHITE);`;
+    case OUTPUT_FORMAT.SPRITES_OVERWRITE:
+      return `Sprites::drawOverwrite(0, 0, ${name}, 0);`;
+    case OUTPUT_FORMAT.SPRITES_EXT_MASK:
+      return `Sprites::drawExternalMask(0, 0, ${name}, ${name}Mask, 0, 0);`;
+    case OUTPUT_FORMAT.SPRITES_PLUS_MASK:
+      return `Sprites::drawPlusMask(0, 0, ${name}, 0);`;
+    default:
+      return `// Unknown format: ${format}`;
+  }
+}
+
+/**
+ * Generate a complete, compilable Arduboy sketch that displays the bitmap.
+ * For sprite sheets with multiple frames, the loop cycles through each frame
+ * with a short delay, animating the sprite.
+ *
+ * @param {string} name - Variable name
+ * @param {string} format - One of OUTPUT_FORMAT values
+ * @param {number} fw - Frame width
+ * @param {number} fh - Frame height (padded for vertical formats; original for drawSlowXY)
+ * @param {string} code - The PROGMEM array code
+ * @param {string} usageSnippet - The draw call line (used for single-frame case)
+ * @param {number} [frameCount=1] - Number of frames in the sprite sheet
+ * @returns {string}
+ */
+export function generateFullSketch(name, format, fw, fh, code, usageSnippet, frameCount = 1) {
+  const needSprites = format === OUTPUT_FORMAT.SPRITES_OVERWRITE
+    || format === OUTPUT_FORMAT.SPRITES_EXT_MASK
+    || format === OUTPUT_FORMAT.SPRITES_PLUS_MASK;
+
+  const lines = [];
+  lines.push('#include <Arduboy2.h>');
+  if (needSprites) lines.push('#include <Sprites.h>');
+  lines.push('');
+  lines.push('Arduboy2 arduboy;');
+  lines.push('');
+
+  // Strip the #pragma once and #include lines from the generated code
+  // since the full sketch already has its own includes
+  const codeLines = code.split('\n').filter((l) =>
+    !l.startsWith('#pragma once') && !l.startsWith('#include'),
+  );
+  lines.push(codeLines.join('\n').trim());
+  lines.push('');
+
+  const isMultiFrame = frameCount > 1;
+
+  if (isMultiFrame) {
+    // Global state for animation
+    lines.push(`uint8_t currentFrame = 0;`);
+    lines.push(`uint8_t frameTimer = 0;`);
+    lines.push(`const uint8_t FRAME_COUNT = ${frameCount};`);
+    lines.push(`const uint8_t FRAME_DELAY = 8;  // game frames between animation steps (~7 fps at 60 fps)`);
+    lines.push('');
+  }
+
+  lines.push('void setup() {');
+  lines.push('  arduboy.begin();');
+  lines.push('  arduboy.setFrameRate(60);');
+  lines.push('}');
+  lines.push('');
+  lines.push('void loop() {');
+  lines.push('  if (!arduboy.nextFrame()) return;');
+  lines.push('  arduboy.clear();');
+  lines.push('');
+
+  if (isMultiFrame) {
+    // Build the draw call that references currentFrame
+    switch (format) {
+      case OUTPUT_FORMAT.DRAW_BITMAP: {
+        // Bytes per frame for vertical format: fw * (fh / 8)
+        const bpf = fw * (fh / 8);
+        lines.push(`  const uint16_t BYTES_PER_FRAME = ${bpf};`);
+        lines.push(`  arduboy.drawBitmap(0, 0, ${name} + currentFrame * BYTES_PER_FRAME, ${fw}, ${fh}, WHITE);`);
+        break;
+      }
+      case OUTPUT_FORMAT.DRAW_SLOW_XY: {
+        // Bytes per frame for horizontal format: ceil(fw/8) * fh
+        const bpf = Math.ceil(fw / 8) * fh;
+        lines.push(`  const uint16_t BYTES_PER_FRAME = ${bpf};`);
+        lines.push(`  arduboy.drawSlowXYBitmap(0, 0, ${name} + currentFrame * BYTES_PER_FRAME, ${fw}, ${fh}, WHITE);`);
+        break;
+      }
+      case OUTPUT_FORMAT.SPRITES_OVERWRITE:
+        lines.push(`  Sprites::drawOverwrite(0, 0, ${name}, currentFrame);`);
+        break;
+      case OUTPUT_FORMAT.SPRITES_EXT_MASK:
+        lines.push(`  Sprites::drawExternalMask(0, 0, ${name}, ${name}Mask, currentFrame, 0);`);
+        break;
+      case OUTPUT_FORMAT.SPRITES_PLUS_MASK:
+        lines.push(`  Sprites::drawPlusMask(0, 0, ${name}, currentFrame);`);
+        break;
+    }
+    lines.push('');
+    lines.push('  arduboy.display();');
+    lines.push('');
+    lines.push('  // Advance animation frame');
+    lines.push('  if (++frameTimer >= FRAME_DELAY) {');
+    lines.push('    frameTimer = 0;');
+    lines.push('    if (++currentFrame >= FRAME_COUNT) currentFrame = 0;');
+    lines.push('  }');
+  } else {
+    lines.push(`  ${usageSnippet}`);
+    lines.push('');
+    lines.push('  arduboy.display();');
+  }
+
+  lines.push('}');
 
   return lines.join('\n');
 }

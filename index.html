@@ -52,7 +52,7 @@
             <input type="file" id="sketch-file" accept=".hex,.arduboy" class="file-input">
             <label for="sketch-file" class="file-label">Choose .hex or .arduboy file</label>
           </div>
-          <div class="action-row">
+          <div class="action-row hidden" id="sketch-upload-controls">
             <button id="btn-sketch-upload" class="btn btn-primary">Upload Sketch</button>
             <div class="options-row">
               <label><input type="checkbox" id="sketch-verify" checked> Verify after write</label>
@@ -91,7 +91,7 @@
               <dt>File Size</dt><dd id="file-scan-size">—</dd>
             </dl>
           </div>
-          <div class="action-row">
+          <div class="action-row hidden" id="fx-write-controls">
             <button id="btn-fx-write" class="btn btn-primary">Write to FX Flash</button>
             <div class="options-row">
               <label><input type="checkbox" id="fx-verify"> Verify after write</label>
@@ -134,7 +134,7 @@
             <input type="file" id="eeprom-file" accept=".bin,.eep" class="file-input">
             <label for="eeprom-file" class="file-label">Choose EEPROM backup file</label>
           </div>
-          <button id="btn-eeprom-restore" class="btn btn-primary">Restore EEPROM</button>
+          <button id="btn-eeprom-restore" class="btn btn-primary hidden" style="display: none;">Restore EEPROM</button>
         </div>
 
         <div class="action-group">
@@ -157,23 +157,23 @@
             <button id="btn-cart-new" class="btn btn-sm btn-secondary" title="Create a new empty cart">New</button>
             <button id="btn-cart-open" class="btn btn-sm btn-secondary" title="Open a cart .bin file">Open .bin</button>
             <input type="file" id="cart-open-file" accept=".bin" class="file-input">
-            <button id="btn-cart-save" class="btn btn-sm btn-primary" title="Compile and save cart as .bin">Save .bin</button>
+            <button id="btn-cart-save" class="btn btn-sm btn-primary" title="Compile and save cart as .bin" disabled>Save .bin</button>
           </div>
           <div class="cart-toolbar-separator"></div>
           <div class="cart-toolbar-group">
             <button id="btn-cart-load-device" class="btn btn-sm btn-secondary" title="Load cart from connected device">Load from Device</button>
-            <button id="btn-cart-write-device" class="btn btn-sm btn-primary" title="Write cart to connected device">Write to Device</button>
-            <label class="cart-patch-label" title="Patch all games for SSD1309 displays (replaces charge pump init with NOPs)">
+            <button id="btn-cart-write-device" class="btn btn-sm btn-primary" title="Write cart to connected device" disabled>Write to Device</button>
+            <label class="cart-patch-label hidden" id="cart-patch-ssd1309-label" title="Patch all games for SSD1309 displays (replaces charge pump init with NOPs)">
               <input type="checkbox" id="cart-patch-ssd1309"> SSD1309
             </label>
           </div>
           <div class="cart-toolbar-separator"></div>
-          <div class="cart-toolbar-group">
+          <div class="cart-toolbar-group hidden" id="cart-export-group">
             <button id="btn-cart-export-slot" class="btn btn-sm btn-outline" title="Export selected slot as .arduboy">Export</button>
             <button id="btn-cart-export-all" class="btn btn-sm btn-outline" title="Export all slots as .arduboy files in a ZIP">Export All</button>
           </div>
         </div>
-        <div class="cart-toolbar cart-toolbar-row2">
+        <div class="cart-toolbar cart-toolbar-row2 hidden" id="cart-toolbar-row2">
           <div class="cart-toolbar-group">
             <button id="btn-cart-move-up" class="btn btn-sm btn-outline btn-icon" title="Move slot up">&#x25B2;</button>
             <button id="btn-cart-move-down" class="btn btn-sm btn-outline btn-icon" title="Move slot down">&#x25BC;</button>
@@ -203,7 +203,7 @@
         </div>
 
         <!-- Main content: slot list + detail panel -->
-        <div class="cart-content">
+        <div class="cart-content hidden" id="cart-content">
           <div class="cart-slot-list-container">
             <div id="cart-slot-list" class="cart-slot-list">
               <div class="cart-empty-state">
@@ -227,11 +227,152 @@
         </div>
       </section>
 
-      <!-- Image Converter Panel (placeholder) -->
+      <!-- Image Converter Panel -->
       <section id="panel-image" class="panel">
         <h2>Image Converter</h2>
-        <p class="panel-description">Convert images to Arduboy sprite format (C++ code or FX binary).</p>
-        <p class="placeholder-note">🚧 Image converter coming in a future phase.</p>
+        <p class="panel-description">Convert images to Arduboy sprite format (C++ PROGMEM code).</p>
+
+        <!-- Load Image -->
+        <div class="action-group" id="img-input-group">
+          <h3>Load Image</h3>
+          <div class="file-input-row" style="display: flex; align-items: center; justify-content: space-between; gap: 1em;">
+            <div style="display: flex; align-items: center; gap: 0.5em;">
+              <input type="file" id="img-file" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" class="file-input">
+              <label for="img-file" class="file-label">Choose image file (.png, .jpg, .gif, .bmp, .webp)</label>
+            </div>
+          </div>
+
+          <div id="img-preview-section" class="img-preview-section hidden">
+            <div class="img-preview-wrap">
+              <canvas id="img-preview-canvas" class="img-preview-canvas"></canvas>
+            </div>
+            <div class="img-preview-controls">
+              <div id="img-dimensions" class="img-dimensions"></div>
+              <div class="img-scale-btns" role="group" aria-label="Preview scale">
+                <label class="img-scale-btn"><input type="radio" name="img-preview-scale" value="1x" checked> 1×</label>
+                <label class="img-scale-btn"><input type="radio" name="img-preview-scale" value="2x"> 2×</label>
+                <label class="img-scale-btn"><input type="radio" name="img-preview-scale" value="4x"> 4×</label>
+                <label class="img-scale-btn"><input type="radio" name="img-preview-scale" value="fill"> Fill</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Output Settings (without extra frame wrapper) -->
+          <div id="img-settings-group" class="hidden">
+            <h3 class="img-settings-heading">Settings</h3>
+            <div class="img-settings-grid">
+              <label class="form-label img-settings-label" for="img-format">Format</label>
+              <select id="img-format" class="img-select img-settings-control">
+                <option value="drawBitmap">drawBitmap()</option>
+                <option value="drawSlowXYBitmap">drawSlowXYBitmap()</option>
+                <option value="spritesOverwrite" selected>Sprites (drawOverwrite)</option>
+                <option value="spritesExternalMask">Sprites + External Mask</option>
+                <option value="spritesPlusMask">Sprites + Plus Mask</option>
+              </select>
+              <label class="form-label img-settings-label" for="img-threshold">Brightness Threshold</label>
+              <div class="img-settings-threshold">
+                <input type="range" id="img-threshold" min="0" max="255" value="128" class="img-slider">
+                <span id="img-threshold-value" class="img-threshold-value">128</span>
+              </div>
+
+              <label class="form-label img-settings-label" for="img-varname">Variable Name</label>
+              <input type="text" id="img-varname" value="image" class="img-text-input img-settings-control" placeholder="image">
+              <span></span><span></span>
+
+              <div class="form-row hidden img-settings-full-row" id="img-manual-offset-row">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="img-manual-offset" checked> Enable manual pointer offsets
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div id="img-sprite-settings" class="img-sprite-settings hidden">
+            <button type="button" id="img-accordion-toggle" class="img-accordion-toggle" aria-expanded="false">
+              <span class="img-accordion-icon">▶</span>
+              <span class="img-accordion-label">Sprite Sheet Settings</span>
+            </button>
+            <div id="img-accordion-content" class="img-accordion-content collapsed">
+              <div class="form-row">
+                <label class="form-label" for="img-frame-width">Frame Width</label>
+                <div class="img-num-input-group">
+                  <input type="number" id="img-frame-width" min="1" max="1024" value="0" class="img-num-input">
+                  <button type="button" class="img-num-btn img-num-btn-down" data-target="img-frame-width" title="Decrease">−</button>
+                  <button type="button" class="img-num-btn img-num-btn-up" data-target="img-frame-width" title="Increase">+</button>
+                </div>
+                <label class="form-label" for="img-frame-height">Frame Height</label>
+                <div class="img-num-input-group">
+                  <input type="number" id="img-frame-height" min="1" max="1024" value="0" class="img-num-input">
+                  <button type="button" class="img-num-btn img-num-btn-down" data-target="img-frame-height" title="Decrease">−</button>
+                  <button type="button" class="img-num-btn img-num-btn-up" data-target="img-frame-height" title="Increase">+</button>
+                </div>
+                <label class="form-label" for="img-spacing">Spacing</label>
+                <div class="img-num-input-group">
+                  <input type="number" id="img-spacing" min="0" max="64" value="0" class="img-num-input">
+                  <button type="button" class="img-num-btn img-num-btn-down" data-target="img-spacing" title="Decrease">−</button>
+                  <button type="button" class="img-num-btn img-num-btn-up" data-target="img-spacing" title="Increase">+</button>
+                </div>
+              </div>
+              <div class="img-frame-info-row">
+                <div id="img-frame-info" class="img-frame-info"></div>
+                <div class="img-scale-btns" role="group" aria-label="Frame strip scale">
+                  <label class="img-scale-btn"><input type="radio" name="img-strip-scale" value="1" checked> 1×</label>
+                  <label class="img-scale-btn"><input type="radio" name="img-strip-scale" value="2"> 2×</label>
+                  <label class="img-scale-btn"><input type="radio" name="img-strip-scale" value="4"> 4×</label>
+                </div>
+              </div>
+              <div id="img-frame-strip" class="img-frame-strip"></div>
+              <div id="img-frame-more" class="img-frame-more hidden"></div>
+              <div id="img-format-warning" class="img-format-warning hidden">
+                <span class="img-format-warning-icon">&#9888;</span>
+                <span class="img-format-warning-body">
+                  <span id="img-format-warning-text"></span><a href="#" id="img-format-switch-link" class="img-format-switch-link"></a>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generated Code Output -->
+        <div class="action-group hidden" id="img-output-group">
+          <h3>Generated Code</h3>
+          <button class="icon-btn-copy" id="btn-img-copy-icon" title="Copy to clipboard" aria-label="Copy code">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <div id="img-output-info" class="img-output-info"></div>
+          <div id="img-first-frame-notice" class="img-first-frame-notice hidden">
+            &#x2139; Manual pointer offset disabled, only first frame generated.
+          </div>
+          <pre id="img-code-output" class="img-code-block"></pre>
+          <div class="button-row">
+            <button class="btn btn-primary" id="btn-img-copy">Copy to Clipboard</button>
+            <button class="btn btn-secondary" id="btn-img-copy-bytes">Copy Bytes Only</button>
+            <button class="btn btn-secondary" id="btn-img-download">Download .h</button>
+          </div>
+        </div>
+
+        <!-- Example Usage -->
+        <div class="action-group hidden" id="img-usage-group">
+          <h3>Example Usage</h3>
+          <button class="icon-btn-copy" id="btn-img-copy-usage-icon" title="Copy to clipboard" aria-label="Copy example">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <div class="img-usage-options">
+            <label class="checkbox-label">
+              <input type="checkbox" id="img-full-sketch"> Show complete Arduboy sketch
+            </label>
+          </div>
+          <pre id="img-usage-output" class="img-code-block"></pre>
+          <div class="button-row">
+            <button class="btn btn-secondary" id="btn-img-copy-usage">Copy Example</button>
+          </div>
+        </div>
       </section>
 
       <!-- Package Editor Panel -->
@@ -250,31 +391,31 @@
 
         <!-- Two-pane layout -->
         <div class="pkg-content">
+
           <!-- Left pane: Package Info -->
-          <div class="pkg-left-pane">
+          <div class="pkg-left-pane" id="pkg-left-pane">
             <h3 class="pkg-pane-title">Package Info</h3>
 
-            <!-- Fields pane (toggles with license pane) -->
-            <div id="pkg-fields-pane" class="pkg-fields-pane">
+            <div class="pkg-section">
               <div class="pkg-field-group">
-                <label class="pkg-label" for="pkg-title">Title *</label>
-                <input type="text" id="pkg-title" class="pkg-field-input" placeholder="Game title">
+                <label class="pkg-label" for="pkg-title">Title <span class="pkg-required">*</span></label>
+                <input type="text" id="pkg-title" class="pkg-field-input" placeholder="Game Title">
               </div>
               <div class="pkg-field-group">
-                <label class="pkg-label" for="pkg-version">Version *</label>
+                <label class="pkg-label" for="pkg-version">Version <span class="pkg-required">*</span></label>
                 <input type="text" id="pkg-version" class="pkg-field-input" placeholder="1.0">
               </div>
               <div class="pkg-field-group">
-                <label class="pkg-label" for="pkg-author">Author *</label>
-                <input type="text" id="pkg-author" class="pkg-field-input" placeholder="Author name">
+                <label class="pkg-label" for="pkg-author">Author <span class="pkg-required">*</span></label>
+                <input type="text" id="pkg-author" class="pkg-field-input" placeholder="Your Name">
               </div>
               <div class="pkg-field-group">
                 <label class="pkg-label" for="pkg-description">Description</label>
-                <textarea id="pkg-description" class="pkg-field-textarea" rows="3" placeholder="Game description"></textarea>
+                <textarea id="pkg-description" class="pkg-field-textarea" rows="3" placeholder="Short description..."></textarea>
               </div>
               <div class="pkg-field-group">
                 <label class="pkg-label" for="pkg-genre">Genre</label>
-                <input type="text" id="pkg-genre" class="pkg-field-input" placeholder="e.g. Puzzle, Action, RPG">
+                <input type="text" id="pkg-genre" class="pkg-field-input" placeholder="e.g. Platformer, Puzzle...">
               </div>
               <div class="pkg-field-group">
                 <label class="pkg-label" for="pkg-url">URL</label>
@@ -288,30 +429,30 @@
                 <label class="pkg-label" for="pkg-email">Email</label>
                 <input type="text" id="pkg-email" class="pkg-field-input" placeholder="contact@example.com">
               </div>
+            </div>
 
-              <!-- Contributors -->
-              <div class="pkg-section">
-                <h4 class="pkg-section-title">Contributors</h4>
-                <div class="pkg-contributors-controls">
-                  <button class="btn btn-sm btn-secondary" id="btn-pkg-add-contributor">+ Add</button>
-                  <button class="btn btn-sm btn-outline" id="btn-pkg-remove-contributor">- Remove</button>
-                </div>
-                <div class="pkg-contributors-wrap">
-                  <table id="pkg-contributors-table" class="pkg-contributors-table">
-                    <thead>
-                      <tr><th>Name</th><th>Roles</th><th>URLs</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                  </table>
-                </div>
+            <!-- Contributors -->
+            <div class="pkg-section">
+              <h4 class="pkg-section-title">Contributors</h4>
+              <div class="pkg-contributors-controls">
+                <button class="btn btn-sm btn-secondary" id="btn-pkg-add-contributor">+ Add</button>
+                <button class="btn btn-sm btn-outline" id="btn-pkg-remove-contributor">- Remove</button>
               </div>
+              <div class="pkg-contributors-wrap">
+                <table id="pkg-contributors-table" class="pkg-contributors-table">
+                  <thead>
+                    <tr><th>Name</th><th>Roles</th><th>URLs</th></tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
 
-              <!-- License -->
-              <div class="pkg-section">
-                <h4 class="pkg-section-title">LICENSE</h4>
-                <textarea id="pkg-license" class="pkg-license-textarea" rows="6" placeholder="Paste license text here (MIT, BSD, etc.)"></textarea>
-                <p class="pkg-license-help">Need help choosing? <a href="https://choosealicense.com/" target="_blank" rel="noopener">choosealicense.com</a></p>
-              </div>
+            <!-- License -->
+            <div class="pkg-section">
+              <h4 class="pkg-section-title">LICENSE</h4>
+              <textarea id="pkg-license" class="pkg-license-textarea" rows="6" placeholder="Paste license text here (MIT, BSD, etc.)"></textarea>
+              <p class="pkg-license-help">Need help choosing? <a href="https://choosealicense.com/" target="_blank" rel="noopener">choosealicense.com</a></p>
             </div>
           </div>
 
@@ -329,6 +470,7 @@
               <p class="pkg-binary-empty">No binary selected</p>
             </div>
           </div>
+
         </div>
       </section>
     </main>

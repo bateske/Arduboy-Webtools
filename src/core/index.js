@@ -16,7 +16,7 @@ export { DeviceManager } from './serial/device.js';
 export { parseIntelHex, generateIntelHex } from './formats/intelhex.js';
 export { FxParsedSlot, parseFxCart, compileFxCart, trimFxCart, scanFxCartHeaders } from './formats/fxcart.js';
 export { readArduboyFile, writeArduboyFile } from './formats/arduboy.js';
-export { screenToImageData, imageDataToScreen, convertImage, loadImageFile, screenToDataURL } from './formats/image.js';
+export { screenToImageData, imageDataToScreen, convertImage, loadImageFile, loadImageFileOriginal, screenToDataURL, convertImageFormat, generateUsageSnippet, generateFullSketch, OUTPUT_FORMAT } from './formats/image.js';
 
 // Operations
 export { uploadSketch, backupSketch, eraseSketch, analyzeSketch } from './operations/sketch.js';
