@@ -89,8 +89,23 @@ export class ImageConverter {
     this._frameWidthInput?.addEventListener('input', reConvert);
     this._frameHeightInput?.addEventListener('input', reConvert);
     this._spacingInput?.addEventListener('input', reConvert);
-    this._formatSelect?.addEventListener('change', reConvert);
     this._varnameInput?.addEventListener('input', reConvert);
+
+    // Format change also updates previews (for transparency color display)
+    this._formatSelect?.addEventListener('change', () => {
+      this._updateConversion();
+      this._renderPreview();
+      this._renderThresholdPreview();
+
+      // Warn if switching to a non-masking format with transparency present
+      const format = this._formatSelect?.value;
+      const supportsMasking = format === OUTPUT_FORMAT.SPRITES_EXT_MASK 
+        || format === OUTPUT_FORMAT.SPRITES_PLUS_MASK;
+      
+      if (!supportsMasking && this._imageData && this._detectTransparency(this._imageData)) {
+        showToast('This format does not support transparency. Transparency information will be omitted.', 'warning');
+      }
+    });
 
     // Threshold slider
     this._thresholdSlider?.addEventListener('input', () => {
@@ -234,6 +249,17 @@ export class ImageConverter {
       return;
     }
 
+    showToast(`Image loaded: ${file.name}`, 'success');
+
+    // Detect transparency and auto-switch format if needed
+    const hasTransparency = this._detectTransparency(this._imageData);
+    if (hasTransparency) {
+      if (this._formatSelect) {
+        this._formatSelect.value = OUTPUT_FORMAT.SPRITES_EXT_MASK;
+      }
+      showToast('Transparency detected. Switched to sprites + external mask format.', 'info');
+    }
+
     // Update label
     if (this._fileLabel) {
       this._fileLabel.textContent = file.name;
@@ -272,6 +298,33 @@ export class ImageConverter {
     this._updateConversion();
   }
 
+  // ── Helper functions ────────────────────────────────────────────────────
+
+  /**
+   * Detect if an image has any transparent pixels (alpha < 255).
+   * @param {ImageData} imageData - The image to check
+   * @returns {boolean} True if any pixel has alpha < 255
+   */
+  _detectTransparency(imageData) {
+    const data = imageData.data;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 255) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check if the current format supports transparency masking.
+   * @returns {boolean} True if the selected format supports masks
+   */
+  _currentFormatSupportsMasking() {
+    const format = this._formatSelect?.value;
+    return format === OUTPUT_FORMAT.SPRITES_EXT_MASK 
+      || format === OUTPUT_FORMAT.SPRITES_PLUS_MASK;
+  }
+
   // ── Preview rendering ───────────────────────────────────────────────────
 
   _renderPreview() {
@@ -283,6 +336,12 @@ export class ImageConverter {
     this._previewCanvas.width = w;
     this._previewCanvas.height = h;
     const ctx = this._previewCanvas.getContext('2d');
+    
+    // Fill with appropriate color for transparent areas
+    // Green if format supports masking, black otherwise
+    ctx.fillStyle = this._currentFormatSupportsMasking() ? '#34D399' : '#000000';
+    ctx.fillRect(0, 0, w, h);
+    
     ctx.putImageData(this._imageData, 0, 0);
     this._applyPreviewScale();
   }
@@ -293,19 +352,36 @@ export class ImageConverter {
     const w = this._imageData.width;
     const h = this._imageData.height;
     const threshold = parseInt(this._thresholdSlider?.value, 10) ?? 128;
+    const supportsMasking = this._currentFormatSupportsMasking();
     // Create a new ImageData for preview
     const src = this._imageData.data;
     const preview = new ImageData(w, h);
     const dst = preview.data;
     for (let i = 0; i < w * h; i++) {
       const idx = i * 4;
-      // Use green channel for brightness (same as conversion)
-      const brightness = src[idx + 1];
-      const value = brightness > threshold ? 255 : 0;
-      dst[idx] = value;
-      dst[idx + 1] = value;
-      dst[idx + 2] = value;
-      dst[idx + 3] = 255;
+      // Check if pixel is transparent in original image
+      const alpha = src[idx + 3];
+      if (alpha < 255) {
+        // Transparent pixel: show as green if masking supported, black otherwise
+        if (supportsMasking) {
+          dst[idx] = 0x34;      // #34D399 red
+          dst[idx + 1] = 0xD3;  // #34D399 green
+          dst[idx + 2] = 0x99;  // #34D399 blue
+        } else {
+          dst[idx] = 0;         // Black
+          dst[idx + 1] = 0;
+          dst[idx + 2] = 0;
+        }
+        dst[idx + 3] = 255;
+      } else {
+        // Opaque pixel: apply threshold
+        const brightness = src[idx + 1];
+        const value = brightness > threshold ? 255 : 0;
+        dst[idx] = value;
+        dst[idx + 1] = value;
+        dst[idx + 2] = value;
+        dst[idx + 3] = 255;
+      }
     }
     this._previewCanvas.width = w;
     this._previewCanvas.height = h;
@@ -526,6 +602,11 @@ export class ImageConverter {
 
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = false;
+
+      // Fill with appropriate color for transparent areas
+      // Green if format supports masking, black otherwise
+      ctx.fillStyle = this._currentFormatSupportsMasking() ? '#34D399' : '#000000';
+      ctx.fillRect(0, 0, fw * stripScale, fh * stripScale);
 
       // Draw the frame region from the source image
       const tempCanvas = new OffscreenCanvas(fw, fh);
