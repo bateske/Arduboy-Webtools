@@ -250,6 +250,20 @@ body::after {
   display: block;
 }
 
+/* Show the correct panel before the JS module activates tabs.
+   The inline <head> script stamps data-tab on <html> synchronously,
+   so on first paint the right panel is already visible. */
+html[data-tab="sketch"]  #panel-sketch,
+html[data-tab="fx"]      #panel-fx,
+html[data-tab="eeprom"]  #panel-eeprom,
+html[data-tab="cart"]    #panel-cart,
+html[data-tab="package"] #panel-package,
+html[data-tab="image"]   #panel-image,
+html[data-tab="music"]   #panel-music,
+html[data-tab="fxdata"]  #panel-fxdata {
+  display: block;
+}
+
 .panel h2 {
   font-size: var(--font-size-xl);
   color: var(--color-accent);

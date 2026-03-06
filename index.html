@@ -11,6 +11,9 @@
   <link rel="stylesheet" href="./src/ui/styles/variables.css">
   <link rel="stylesheet" href="./src/ui/styles/main.css">
   <link rel="stylesheet" href="./src/ui/styles/components.css">
+  <!-- Stamp the saved tab onto <html> synchronously so CSS can show the right
+       panel on the very first paint, before the deferred module script runs. -->
+  <script>(function(){var t=localStorage.getItem('activeMainTab')||'sketch';document.documentElement.dataset.tab=t;})()</script>
 </head>
 <body>
   <div id="app">
@@ -21,7 +24,7 @@
         <span class="brand-text">Arduboy Web Tools</span>
       </div>
       <div class="navbar-tabs">
-        <button class="tab-btn active" data-panel="sketch">Sketch</button>
+        <button class="tab-btn" data-panel="sketch">Sketch</button>
         <button class="tab-btn" data-panel="fx">FX Flash</button>
         <button class="tab-btn" data-panel="eeprom">EEPROM</button>
         <button class="tab-btn" data-panel="cart">Cart Editor</button>
@@ -44,7 +47,7 @@
     <!-- Panel Container -->
     <main id="panels" class="panels">
       <!-- Sketch Panel -->
-      <section id="panel-sketch" class="panel active">
+      <section id="panel-sketch" class="panel">
         <h2>Sketch Manager</h2>
         <p class="panel-description">Upload, backup, or erase the game stored on your Arduboy.</p>
 

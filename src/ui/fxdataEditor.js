@@ -1598,30 +1598,50 @@ export class FxDataEditor {
    */
   _buildAssetTree() {
     const files = this._project.listFiles();
-    const allPaths = new Set(files);
 
-    // Include all explicit folders (even empty ones)
-    for (const f of this._folders) {
-      allPaths.add(f);
+    // Discover all implicit directories from file paths
+    const implicitFolders = new Set();
+    for (const path of files) {
+      let slashIdx = path.indexOf('/');
+      while (slashIdx !== -1) {
+        implicitFolders.add(path.slice(0, slashIdx));
+        slashIdx = path.indexOf('/', slashIdx + 1);
+      }
     }
+
+    // Include all explicit folders (even empty ones) and implicit ones
+    const allFolders = new Set([...this._folders, ...implicitFolders]);
 
     // For each path, determine its parent and add to parent's children
     const folderChildren = new Map();
 
-    for (const path of allPaths) {
-      const slashIdx = path.lastIndexOf('/');
-      const parentPath = slashIdx === -1 ? '' : path.slice(0, slashIdx);
-
+    // Register all folders under their parents first
+    for (const folder of allFolders) {
+      const slashIdx = folder.lastIndexOf('/');
+      const parentPath = slashIdx === -1 ? '' : folder.slice(0, slashIdx);
       if (!folderChildren.has(parentPath)) {
         folderChildren.set(parentPath, { files: [], folders: [] });
       }
-
-      const isFile = files.includes(path);
-      if (isFile) {
-        folderChildren.get(parentPath).files.push(path);
-      } else {
-        folderChildren.get(parentPath).folders.push(path);
+      folderChildren.get(parentPath).folders.push(folder);
+      // Ensure the folder itself has an entry (even if empty)
+      if (!folderChildren.has(folder)) {
+        folderChildren.set(folder, { files: [], folders: [] });
       }
+    }
+
+    // Register files under their parent folders
+    for (const path of files) {
+      const slashIdx = path.lastIndexOf('/');
+      const parentPath = slashIdx === -1 ? '' : path.slice(0, slashIdx);
+      if (!folderChildren.has(parentPath)) {
+        folderChildren.set(parentPath, { files: [], folders: [] });
+      }
+      folderChildren.get(parentPath).files.push(path);
+    }
+
+    // Ensure root entry exists
+    if (!folderChildren.has('')) {
+      folderChildren.set('', { files: [], folders: [] });
     }
 
     // Sort children

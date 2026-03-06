@@ -32,6 +32,9 @@ export class TabController {
     this.panels.forEach((p) => p.classList.toggle(this.activeClass, p.id === `panel-${name}`));
     this._currentTab = name;
     if (this._storageKey) localStorage.setItem(this._storageKey, name);
+    // Remove the pre-paint data-tab attribute set by the inline <head> script;
+    // the .active class takes over from here.
+    delete document.documentElement.dataset.tab;
   }
 
   /** @returns {string|null} The currently active tab name. */

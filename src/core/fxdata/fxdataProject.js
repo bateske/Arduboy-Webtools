@@ -171,14 +171,30 @@ export class FxDataProject {
       if (!entry.dir) entries.push({ path, entry });
     });
 
+    // Strip a common single-segment root prefix if all files share one.
+    // e.g. all files under "myproject/" → strip "myproject/"
+    let prefix = '';
+    if (entries.length > 0) {
+      const firstSeg = (p) => {
+        const slash = p.indexOf('/');
+        return slash === -1 ? '' : p.slice(0, slash + 1);
+      };
+      const candidate = firstSeg(entries[0].path);
+      if (candidate && entries.every((e) => e.path.startsWith(candidate))) {
+        prefix = candidate;
+      }
+    }
+
     for (const { path, entry } of entries) {
-      const ext = extOf(path);
+      const storePath = prefix ? path.slice(prefix.length) : path;
+      if (!storePath) continue; // skip the root folder entry itself
+      const ext = extOf(storePath);
       if (TEXT_EXTENSIONS.has(ext)) {
         const text = await entry.async('string');
-        this.addFile(path, text);
+        this.addFile(storePath, text);
       } else {
         const bytes = await entry.async('uint8array');
-        this.addFile(path, bytes);
+        this.addFile(storePath, bytes);
       }
     }
   }
