@@ -1,0 +1,2109 @@
+/* ==========================================================================
+   FX Data Editor — Tab-specific styles
+   ========================================================================== */
+
+
+#panel-fxdata{
+  max-width: 1400px;
+}
+
+/* ---------------------------------------------------------------------------
+   Toolbar
+   --------------------------------------------------------------------------- */
+
+.fxdata-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  flex-wrap: wrap;
+}
+
+.fxdata-toolbar-left {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  flex-shrink: 0;
+}
+
+.fxdata-toolbar-left h2 {
+  margin: 0;
+}
+
+.fxdata-toolbar-left .panel-description {
+  margin: 0;
+}
+
+.fxdata-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Main layout — 3-column grid
+   --------------------------------------------------------------------------- */
+
+.fxdata-editor-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  height: calc(100vh - 200px);
+  min-height: 400px;
+  overflow: hidden;
+}
+
+/* Resize handles between columns */
+.fxdata-resize-handle {
+  flex: 0 0 5px;
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background var(--transition-fast);
+  position: relative;
+  z-index: 10;
+  user-select: none;
+}
+
+.fxdata-resize-handle:hover,
+.fxdata-resize-handle.dragging {
+  background: rgba(139, 45, 180, 0.7);
+  border-color: rgba(139, 45, 180, 0.6);
+}
+
+/* Vertical resize handle (for preview height) */
+.fxdata-resize-handle.fxdata-resize-vertical {
+  flex: 0 0 4px;
+  width: 100%;
+  height: 4px;
+  cursor: row-resize;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* In the left column the gap already provides spacing; keep the handle
+   zero-height but still interactive so it can be grabbed for resizing. */
+.fxdata-panel-left > .fxdata-resize-handle.fxdata-resize-vertical,
+.fxdata-panel-center > .fxdata-resize-handle.fxdata-resize-vertical {
+  flex: 0 0 0px;
+  height: 0px;
+  margin: -3px 0;
+  padding: 3px 0;
+  border: none;
+  background: transparent;
+  box-sizing: content-box;
+  z-index: 11;
+}
+
+.fxdata-panel-left > .fxdata-resize-handle.fxdata-resize-vertical:hover,
+.fxdata-panel-center > .fxdata-resize-handle.fxdata-resize-vertical:hover,
+.fxdata-panel-left > .fxdata-resize-handle.fxdata-resize-vertical.dragging,
+.fxdata-panel-center > .fxdata-resize-handle.fxdata-resize-vertical.dragging {
+  background: rgba(139, 45, 180, 0.7);
+}
+
+.fxdata-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fxdata-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Left panel — split into entries section (top) + assets section (bottom)
+   --------------------------------------------------------------------------- */
+
+.fxdata-panel-left {
+  flex: 0 0 700px;
+  width: 700px;
+  min-width: 550px;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+}
+
+/* FX Entries section — top half */
+.fxdata-entries-section {
+  flex: 1 1 60%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-surface);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* Assets section — bottom half, stretches to fill remaining space */
+.fxdata-project-section {
+  flex: 1 1 0;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-surface);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* Entries list (scrollable, holds draggable entry cards) */
+.fxdata-entries-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.fxdata-empty-entries {
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ---------------------------------------------------------------------------
+   Entry cards
+   --------------------------------------------------------------------------- */
+
+.fxdata-entry-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 2px 3px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  cursor: default;
+  user-select: none;
+}
+
+.fxdata-entry-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.fxdata-entry-card.dragging {
+  opacity: 0.4;
+}
+
+.fxdata-entry-name.has-error,
+.fxdata-entry-value.has-error,
+.fxdata-entry-asset-select.has-error,
+.fxdata-entry-type-select.has-error {
+  border-color: rgba(248, 113, 113, 0.7);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.fxdata-entry-name.hover-highlight,
+.fxdata-entry-value.hover-highlight,
+.fxdata-entry-asset-select.hover-highlight {
+  border-color: rgba(248, 113, 113, 0.9);
+  background: rgba(248, 113, 113, 0.18);
+  outline: 1px solid rgba(248, 113, 113, 0.5);
+}
+
+.fxdata-build-msg-linked {
+  cursor: pointer;
+  text-decoration: underline dotted rgba(248, 113, 113, 0.5);
+}
+
+.fxdata-build-msg-linked:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 3px;
+}
+
+.fxdata-entry-card.drag-over {
+  border-top-color: var(--color-primary);
+}
+
+.fxdata-entry-drag {
+  cursor: grab;
+  color: var(--color-text-muted);
+  padding: 0 4px;
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.fxdata-entry-drag:active {
+  cursor: grabbing;
+}
+
+.fxdata-entry-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 4px;
+}
+
+/* Type badge */
+.fxdata-entry-type-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  font-family: monospace;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 115px;
+  min-width: 115px;
+  box-sizing: border-box;
+}
+
+.fxdata-type-data {
+  background: rgba(96, 165, 250, 0.18);
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.fxdata-type-asset {
+  background: rgba(52, 211, 153, 0.18);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.fxdata-type-directive {
+  background: rgba(251, 191, 36, 0.18);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+/* Inline name / value inputs */
+.fxdata-entry-name {
+  width: 180px;
+  min-width: 80px;
+  flex-shrink: 0;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: var(--color-text);
+  font-size: 11px;
+  font-family: monospace;
+  padding: 4px 6px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  display: flex;
+  align-items: center;
+}
+
+.fxdata-entry-name:focus {
+  border-color: var(--color-primary);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.fxdata-entry-sep {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  flex-shrink: 0;
+  text-align: center;
+  width: 12px;
+}
+
+.fxdata-entry-value {
+  flex: 1;
+  min-width: 60px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-family: monospace;
+  padding: 4px 10px 4px 15px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  display: flex;
+  align-items: center;
+}
+
+.fxdata-entry-value:focus {
+  border-color: var(--color-primary);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--color-text);
+}
+
+select.fxdata-entry-asset-select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath fill='%23999' d='M0 0l4 5 4-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+
+/* Asset select dropdown styling */
+select.fxdata-entry-asset-select {
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath fill='%23999' d='M0 0l4 5 4-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  padding-right: 20px;
+}
+
+select.fxdata-entry-asset-select option {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+}
+
+/* Red text for asset values referencing missing files */
+.fxdata-entry-value.fxdata-asset-missing {
+  color: #f87171;
+}
+
+/* Browse button for image_t / raw_t */
+.fxdata-entry-browse {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  aspect-ratio: 1 / 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  padding: 0;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fxdata-entry-browse:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--color-text);
+}
+
+/* Delete button */
+.fxdata-entry-delete {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 100%;
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.fxdata-entry-card:hover .fxdata-entry-delete {
+  opacity: 0.7;
+}
+
+.fxdata-entry-delete:hover {
+  opacity: 1 !important;
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+/* ---------------------------------------------------------------------------
+   Type dropdown
+   --------------------------------------------------------------------------- */
+
+.fxdata-type-dropdown {
+  position: absolute;
+  z-index: 200;
+  background: var(--color-bg-elevated);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  min-width: 130px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.fxdata-type-group {
+  margin-bottom: 4px;
+}
+
+.fxdata-type-group-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  padding: 4px 8px 2px;
+}
+
+.fxdata-type-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 10px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-family: monospace;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.fxdata-type-dropdown button:hover {
+  background: rgba(139, 45, 180, 0.2);
+  color: var(--color-text);
+}
+
+.fxdata-file-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.fxdata-file-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 3px var(--space-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fxdata-file-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.fxdata-file-item.active {
+  background: rgba(139, 45, 180, 0.2);
+  color: var(--color-text);
+}
+
+.fxdata-file-item.entry-file {
+  font-weight: 600;
+}
+
+.fxdata-file-icon {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 2px;
+  background: rgba(160, 160, 160, 0.35);
+}
+
+.fxdata-file-type-image  { background: rgba(52,  211, 153, 0.75); }
+.fxdata-file-type-binary { background: rgba(96,  165, 250, 0.75); }
+.fxdata-file-type-generic { background: rgba(160, 160, 160, 0.40); }
+
+.fxdata-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fxdata-file-remove {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 100%;
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.fxdata-file-item:hover .fxdata-file-remove {
+  opacity: 0.7;
+}
+
+.fxdata-file-remove:hover {
+  opacity: 1 !important;
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+/* ---------------------------------------------------------------------------
+   Folder view
+   --------------------------------------------------------------------------- */
+
+.fxdata-folder-section {
+  border-radius: var(--radius-sm);
+  margin-bottom: 1px;
+  transition: background var(--transition-fast);
+}
+
+.fxdata-folder-section.fxdata-drag-over {
+  background: rgba(139, 45, 180, 0.15);
+  outline: 1px dashed rgba(139, 45, 180, 0.5);
+}
+
+.fxdata-file-tree.fxdata-root-drag-over {
+  outline: 1px dashed rgba(139, 45, 180, 0.4);
+  outline-offset: -2px;
+}
+
+.fxdata-folder-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--space-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.fxdata-folder-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.fxdata-folder-header:hover .fxdata-file-remove {
+  opacity: 0.7;
+}
+
+.fxdata-folder-arrow {
+  flex-shrink: 0;
+  font-size: 9px;
+  width: 10px;
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast);
+}
+
+.fxdata-folder-icon {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.fxdata-folder-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+.fxdata-folder-name:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+}
+
+.fxdata-folder-content {
+  padding-left: 12px;
+}
+
+.fxdata-file-item-nested {
+  margin-bottom: 0;
+}
+
+/* Inline rename input */
+.fxdata-inline-rename {
+  flex: 1;
+  background: var(--color-bg-input, rgba(0, 0, 0, 0.3));
+  border: 1px solid rgba(139, 45, 180, 0.5);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  padding: 1px 4px;
+  outline: none;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.fxdata-inline-rename:focus {
+  border-color: rgba(139, 45, 180, 0.8);
+  box-shadow: 0 0 0 2px rgba(139, 45, 180, 0.2);
+}
+
+/* Dragging state */
+.fxdata-dragging {
+  opacity: 0.45;
+}
+
+/* Assets header actions row */
+.fxdata-assets-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+
+.fxdata-overwrite-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.fxdata-overwrite-label input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.fxdata-assets-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.fxdata-assets-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+#fxdata-btn-add-file {
+  color: var(--color-success, #34D399);
+  border-color: var(--color-success, #34D399);
+}
+
+#fxdata-btn-add-file:hover {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: var(--color-success, #34D399);
+}
+
+#fxdata-btn-add-folder {
+  color: var(--color-warning, #FBBF24);
+  border-color: var(--color-warning, #FBBF24);
+}
+
+#fxdata-btn-add-folder:hover {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: var(--color-warning, #FBBF24);
+}
+
+/* Overwrite confirmation dialog */
+
+#fxdata-overwrite-toggle{
+  accent-color: rgb(248, 113, 113);
+}
+
+.fxdata-overwrite-dialog-overlay {
+  position: fixed;
+    backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0, 0, 0, 0.55);
+}
+
+.fxdata-overwrite-dialog {
+  background: var(--color-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  min-width: 320px;
+  max-width: 440px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.fxdata-overwrite-dialog-counter {
+  margin: 0 0 var(--space-xs);
+  font-size: 11px;
+  color: var(--color-text-muted, #999);
+}
+
+.fxdata-overwrite-dialog-msg {
+  margin: 0 0 var(--space-sm);
+  font-size: 14px;
+  color: var(--color-text-secondary, #ccc);
+  word-break: break-word;
+}
+
+.fxdata-overwrite-dialog-check {
+  accent-color: rgb(139, 45, 180);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted, #999);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.fxdata-overwrite-dialog-check input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.fxdata-overwrite-dialog-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--space-md);
+}
+
+.fxdata-overwrite-dialog-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.fxdata-overwrite-dialog-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.fxdata-overwrite-dialog-btn-cancel {
+  background: transparent;
+  color: var(--color-text-secondary, #ccc);
+}
+
+.fxdata-overwrite-dialog-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.fxdata-overwrite-dialog-btn-yes {
+  background: var(--color-primary, #8B2DB4);
+  color: #fff;
+  border-color: transparent;
+}
+
+.fxdata-overwrite-dialog-btn-yes:hover {
+  background: var(--color-primary-light, #A84DD4);
+}
+
+/* Add folder button (legacy selector kept for backwards compat) */
+.fxdata-btn-add-folder {
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  background: transparent;
+  border: none;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  opacity: 0.8;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.fxdata-btn-add-folder:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.fxdata-btn-add {
+  width: 22px;
+  height: 22px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+   Add-entry hub — centered below entries list
+   --------------------------------------------------------------------------- */
+
+.fxdata-add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Sticky to bottom of the scroll container when entries overflow */
+  position: sticky;
+  bottom: 0;
+  padding: 10px 12px 18px;
+  /* Allow absolutely positioned chips to visually escape into the area above */
+  overflow: visible;
+  /* Elevate above the placeholder card so chips render on top */
+  z-index: 1;
+  /* Background is transparent by default; only shows when stuck to bottom */
+  background: transparent;
+  transition: background 0.3s ease;
+}
+
+.fxdata-add-row.stuck {
+  /* Gradient fades entries out beneath the button when pinned to bottom */
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--color-bg-surface) 35%
+  );
+}
+
+/* Container for + button + chips; relative so chips can be absolutely positioned */
+.fxdata-add-hub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  position: relative;
+  overflow: visible;
+}
+
+/* Chips row — absolutely positioned above the + button; hovers z-order-wise
+   over the placeholder card in the entries list above */
+.fxdata-add-chips-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  /* Float above the hub button */
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  width: max-content;
+  /* Collapsed: shifted downward toward button, invisible */
+  transform: translateX(-50%) translateY(10px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition:
+    opacity   0.25s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fxdata-add-hub.open .fxdata-add-chips-row {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Button row — always visible, centered */
+.fxdata-add-btn-row {
+  display: flex;
+  justify-content: center;
+}
+
+/* The big outlined + button */
+.fxdata-add-main-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(139, 45, 180, 0.55);
+  background: transparent;
+  color: rgba(180, 100, 220, 0.9);
+  font-size: 0; /* hide default text */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  transition:
+    border-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.fxdata-add-main-btn:hover {
+  border-color: rgba(180, 80, 220, 0.85);
+  color: rgba(200, 130, 240, 1);
+  box-shadow: 0 0 18px rgba(139, 45, 180, 0.35), 0 0 6px rgba(139, 45, 180, 0.2) inset;
+  transform: scale(1.06);
+}
+
+.fxdata-add-main-btn:active {
+  transform: scale(0.95);
+}
+
+/* The + / × glyph inside the button */
+.fxdata-add-plus {
+  font-size: 26px;
+  display: block;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-weight: 300;
+  color: inherit;
+}
+
+.fxdata-add-hub.open .fxdata-add-plus {
+  transform: rotate(45deg);
+}
+
+/* ---------------------------------------------------------------------------
+   Flyout type chips — appear to morph out from the + button
+   --------------------------------------------------------------------------- */
+
+.fxdata-add-flyout-chip {
+  padding: 5px 8px;
+  height: 28px;
+  width: 80px;
+  box-sizing: border-box;
+  white-space: nowrap;
+
+  /* visuals — match type badge styling */
+  border-radius: var(--radius-md);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: monospace;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* start scaled down — row handles show/hide */
+  opacity: 0;
+  transform: scale(0.55);
+  pointer-events: none;
+
+  transition:
+    opacity   0.25s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+/* Open state — chips scale into place (row already revealed by max-height) */
+.fxdata-add-hub.open .fxdata-add-flyout-chip {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* Stagger: from center outward — child order: 1=Number, 2=String, 3=Image, 4=Raw, 5=Directive */
+.fxdata-add-hub.open .fxdata-add-flyout-chip:nth-child(3) { transition-delay: 0s;     } /* Image    — center  */
+.fxdata-add-hub.open .fxdata-add-flyout-chip:nth-child(2) { transition-delay: 0.05s;  } /* String   — 1 left  */
+.fxdata-add-hub.open .fxdata-add-flyout-chip:nth-child(4) { transition-delay: 0.05s;  } /* Raw      — 1 right */
+.fxdata-add-hub.open .fxdata-add-flyout-chip:nth-child(1) { transition-delay: 0.10s;  } /* Number   — 2 left  */
+.fxdata-add-hub.open .fxdata-add-flyout-chip:nth-child(5) { transition-delay: 0.10s;  } /* Directive— 2 right */
+
+/* Collapse instantly on close */
+.fxdata-add-hub:not(.open) .fxdata-add-flyout-chip { transition-delay: 0s !important; }
+
+/* Type colours — match badge styling */
+.fxdata-add-flyout-chip.fxdata-type-data {
+  background: rgba(96, 165, 250, 0.18);
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.35);
+}
+.fxdata-add-flyout-chip.fxdata-type-data:hover {
+  background: rgba(96, 165, 250, 0.28);
+  border-color: rgba(96, 165, 250, 0.5);
+}
+.fxdata-add-flyout-chip.fxdata-type-asset {
+  background: rgba(52, 211, 153, 0.18);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.35);
+}
+.fxdata-add-flyout-chip.fxdata-type-asset:hover {
+  background: rgba(52, 211, 153, 0.28);
+  border-color: rgba(52, 211, 153, 0.5);
+}
+.fxdata-add-flyout-chip.fxdata-type-directive {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.18);
+}
+.fxdata-add-flyout-chip.fxdata-type-directive:hover {
+  background: rgba(251, 191, 36, 0.28);
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+/* Flying chip clone (while animating after selection) */
+.fxdata-chip-flying {
+  position: fixed !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  /* transitions applied via JS */
+}
+
+/* ---------------------------------------------------------------------------
+   Placeholder card — inserted when flyout opens to reserve space
+   --------------------------------------------------------------------------- */
+
+.fxdata-entry-placeholder {
+  min-height: 36px;
+
+  margin: 1px 2px;
+
+}
+
+@keyframes fxdata-placeholder-in {
+  from { opacity: 0; transform: scaleY(0.2); transform-origin: top center; }
+  to   { opacity: 1; transform: scaleY(1);   }
+}
+
+@keyframes fxdata-placeholder-pulse {
+  0%, 100% { border-color: rgba(139, 45, 180, 0.2);  background: rgba(139, 45, 180, 0.04); }
+  50%       { border-color: rgba(139, 45, 180, 0.55); background: rgba(139, 45, 180, 0.10); }
+}
+
+/* Per-entry type selector (for numeric and directive entries) */
+.fxdata-entry-type-select {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 22px 5px 8px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  font-family: monospace;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 115px;
+  min-width: 115px;
+  box-sizing: border-box;
+  height: 28px;
+  text-align: left;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0 L4 5 L8 0Z' fill='%23aaaaaa'/%3E%3C/svg%3E");
+  background-position: right 7px center;
+  background-repeat: no-repeat;
+  background-size: 8px 5px;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.fxdata-entry-type-select.fxdata-type-data {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0 L4 5 L8 0Z' fill='%2360a5fa'/%3E%3C/svg%3E");
+}
+
+.fxdata-entry-type-select.fxdata-type-directive {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0 L4 5 L8 0Z' fill='%23fbbf24'/%3E%3C/svg%3E");
+}
+
+.fxdata-entry-type-select:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.fxdata-entry-type-select:focus {
+  border-color: rgba(139, 45, 180, 0.5);
+  outline: 1px solid rgba(139, 45, 180, 0.3);
+}
+
+.fxdata-empty-tree,
+.fxdata-empty-structured,
+.fxdata-empty-preview,
+.fxdata-empty-map,
+.fxdata-empty-output {
+  padding: var(--space-md);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.fxdata-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+/* ---------------------------------------------------------------------------
+   Center panel — Editor tabs
+   --------------------------------------------------------------------------- */
+
+.fxdata-editor-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.fxdata-editor-tab {
+  padding: var(--space-xs) var(--space-md);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.fxdata-editor-tab:hover {
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.fxdata-editor-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.fxdata-editor-pane {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+}
+
+.fxdata-editor-pane.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------------------------------------------------------------------
+   Source editor
+   --------------------------------------------------------------------------- */
+
+.fxdata-source-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px var(--space-sm);
+  background: rgba(0, 0, 0, 0.2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.fxdata-source-filename {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fxdata-dirty {
+  color: var(--color-warning);
+  font-weight: 700;
+}
+
+.fxdata-source-textarea {
+  flex: 1;
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: var(--space-sm);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--color-text);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  tab-size: 4;
+  white-space: pre;
+  overflow: auto;
+}
+
+.fxdata-source-textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------------------
+   Structured editor
+   --------------------------------------------------------------------------- */
+
+.fxdata-structured-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.fxdata-struct-entry {
+  background: var(--color-bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.fxdata-struct-entry:hover {
+  border-color: rgba(139, 45, 180, 0.3);
+}
+
+.fxdata-struct-entry.active {
+  border-color: var(--color-primary);
+}
+
+.fxdata-struct-entry.hover,
+.fxdata-struct-entry.hover-active {
+  background: rgba(139, 45, 180, 0.15);
+  border-color: rgba(139, 45, 180, 0.5);
+}
+
+.fxdata-struct-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+  .fxdata-struct-type {
+    text-align: center;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  flex-shrink: 0;
+  width: 50px;
+}
+
+.fxdata-struct-name {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.fxdata-struct-offset {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: monospace;
+}
+
+.fxdata-struct-details {
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.fxdata-struct-img-preview {
+  margin-top: var(--space-xs);
+  max-width: 100%;
+  image-rendering: pixelated;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ---------------------------------------------------------------------------
+   Asset preview
+   --------------------------------------------------------------------------- */
+
+.fxdata-asset-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.fxdata-asset-preview h4 {
+  flex-shrink: 0;
+}
+
+.fxdata-preview-img {
+  image-rendering: pixelated;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #000;
+  display: block;
+  margin: auto;
+}
+
+.fxdata-preview-info {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Data preview card — modular layout for numbers, strings, etc */
+.fxdata-data-preview-card {
+  display: flex;
+  align-self: stretch;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.fxdata-data-field {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  background: var(--color-bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  justify-content: space-between;
+}
+
+.fxdata-data-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  min-width: 48px;
+}
+
+.fxdata-data-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+.fxdata-data-value-mono {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.fxdata-preview-hex {
+  margin-top: var(--space-sm);
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  background: rgba(0, 0, 0, 0.3);
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+  word-break: break-all;
+}
+
+/* ---------------------------------------------------------------------------
+   Right panel — Memory map + Build output
+   --------------------------------------------------------------------------- */
+
+/* .fxdata-panel-right sizing is now defined in the resizable layout section */
+
+/* Memory map */
+
+.fxdata-memory-map {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.fxdata-map-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 3px var(--space-xs);
+  border-radius: 3px;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.fxdata-map-entry:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.fxdata-map-bar {
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.fxdata-map-bar.type-image { background: #34d399; }
+.fxdata-map-bar.type-data { background: #60a5fa; }
+.fxdata-map-bar.type-raw { background: #34d399; }
+.fxdata-map-bar.type-string { background: #60a5fa; }
+.fxdata-map-bar.type-align { background: #fbbf24; }
+.fxdata-map-bar.type-save { background: #fbbf24; }
+
+.fxdata-map-name {
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.fxdata-map-size {
+  color: var(--color-text-muted);
+  font-family: monospace;
+  flex-shrink: 0;
+}
+
+/* Horizontal memory map bar chart */
+
+.fxdata-map-bar-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--space-xs);
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.fxdata-map-bar-track {
+  position: relative;
+  display: flex;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: visible;
+}
+
+.fxdata-map-bar-segment {
+  flex-grow: 1;
+  min-width: 1px;
+  cursor: pointer;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+  border-right: 1px solid rgba(0, 0, 0, 0.2);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.fxdata-map-bar-segment:last-child {
+  border-right: none;
+}
+
+.fxdata-map-bar-segment:hover {
+  filter: brightness(1.2);
+  z-index: 10;
+}
+
+.fxdata-map-bar-segment.active {
+  filter: brightness(1.3) drop-shadow(0 0 4px rgba(139, 45, 180, 0.6));
+  z-index: 20;
+}
+
+.fxdata-map-bar-segment.type-image { background: #34d399; }
+.fxdata-map-bar-segment.type-data { background: #60a5fa; }
+.fxdata-map-bar-segment.type-raw { background: #34d399; }
+.fxdata-map-bar-segment.type-string { background: #60a5fa; }
+.fxdata-map-bar-segment.type-align { background: #fbbf24; }
+.fxdata-map-bar-segment.type-save { background: #fbbf24; }
+.fxdata-map-bar-segment.type-datasection { background: #fbbf24; }
+
+.fxdata-map-label {
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-xs);
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.fxdata-memory-summary {
+  padding: var(--space-xs) var(--space-sm);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-elevated);
+  flex-shrink: 0;
+}
+
+.fxdata-memory-summary dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--space-sm);
+  margin: 0;
+}
+
+.fxdata-memory-summary dt {
+  color: var(--color-text-muted);
+}
+
+.fxdata-memory-summary dd {
+  margin: 0;
+  font-family: monospace;
+  text-align: right;
+}
+
+/* Build output */
+
+.fxdata-build-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs);
+  font-size: var(--font-size-xs);
+}
+
+.fxdata-build-msg {
+  padding: 2px var(--space-xs);
+  border-radius: 3px;
+  margin-bottom: 2px;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.fxdata-build-msg.error {
+  color: var(--color-danger);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.fxdata-build-msg.warning {
+  color: var(--color-warning);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.fxdata-build-msg.info {
+  color: var(--color-info);
+}
+
+.fxdata-build-msg.success {
+  color: var(--color-success);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+/* .fxdata-build-actions overridden in the accordion section above */
+
+/* ---------------------------------------------------------------------------
+   Settings bar (reused by image controls)
+   --------------------------------------------------------------------------- */
+
+.fxdata-settings-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.fxdata-setting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.fxdata-slider {
+  width: 120px;
+  accent-color: var(--color-primary);
+}
+
+.fxdata-slider-value {
+  min-width: 28px;
+  text-align: center;
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+}
+
+/* ---------------------------------------------------------------------------
+   Image controls (inside preview panel)
+   --------------------------------------------------------------------------- */
+
+.fxdata-image-controls {
+  flex: 0 0 auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: var(--space-xs) var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fxdata-image-controls-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.fxdata-global-note {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.fxdata-override-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.fxdata-checkbox {
+  accent-color: var(--color-primary);
+  margin: 0;
+}
+
+.fxdata-sprite-override-fields {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-left: 18px;
+}
+
+.fxdata-sprite-input {
+  width: 52px;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: var(--color-text);
+  font-size: 11px;
+  font-family: monospace;
+  padding: 2px 4px;
+  outline: none;
+  text-align: center;
+}
+
+/* Hide number input spinners */
+.fxdata-sprite-input::-webkit-outer-spin-button,
+.fxdata-sprite-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.fxdata-sprite-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.fxdata-sprite-input:focus {
+  border-color: var(--color-primary);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Frames view */
+.fxdata-frames-view {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.fxdata-frame-cell {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #000;
+  image-rendering: pixelated;
+}
+
+.fxdata-frames-info {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  padding: 2px 0;
+  width: 100%;
+}
+
+/* Yellow text for overridden filenames in asset tree */
+.fxdata-file-name.fxdata-name-overridden,
+.fxdata-entry-value.fxdata-name-overridden {
+  color: #fbbf24;
+}
+
+/* Highlight active sprite override checkbox */
+.fxdata-checkbox:checked {
+  accent-color: #fbbf24;
+}
+
+/* ---------------------------------------------------------------------------
+   Page boundary marker (in memory map)
+   --------------------------------------------------------------------------- */
+
+.fxdata-page-marker {
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  padding: 1px var(--space-xs);
+  margin: 2px 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Column sizing — flex-based resizable layout
+   --------------------------------------------------------------------------- */
+
+.fxdata-panel-center {
+  flex: 1 1 0;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.fxdata-panel-right {
+  flex: 0 0 300px;
+  width: 300px;
+  min-width: 180px;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+}
+
+/* Download header + actions container */
+@keyframes fxdata-download-reveal {
+  0%   { opacity: 0; transform: translateY(-6px) scaleY(0.85); }
+  60%  { opacity: 1; transform: translateY(2px)  scaleY(1.02); }
+  100% { opacity: 1; transform: translateY(0)    scaleY(1);    }
+}
+
+@keyframes fxdata-download-flash {
+  0%   { box-shadow: inset 0 0 0 0px rgba(52, 211, 153, 0);    background: var(--color-bg-surface); }
+  25%  { box-shadow: inset 0 0 0 2px rgba(52, 211, 153, 0.75); background: rgba(52, 211, 153, 0.12); }
+  100% { box-shadow: inset 0 0 0 0px rgba(52, 211, 153, 0);    background: var(--color-bg-surface); }
+}
+
+.fxdata-download-container {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-surface);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transform-origin: top center;
+}
+
+.fxdata-download-container.revealing {
+  animation: fxdata-download-reveal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.fxdata-download-container.flash {
+  animation: fxdata-download-flash 0.6s ease-out both;
+}
+
+/* Build accordion + tabbed section container */
+.fxdata-content-container {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-surface);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Center column — preview + source
+   --------------------------------------------------------------------------- */
+
+/* Preview fills full center column height */
+.fxdata-center-preview-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg-surface);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.fxdata-center-preview-section .fxdata-panel-header {
+  flex-shrink: 0;
+}
+
+.fxdata-asset-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Hex data accordion within preview */
+.fxdata-preview-hex-accordion {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fxdata-preview-hex-accordion.fxdata-accordion-hidden {
+  display: none;
+}
+
+.fxdata-hex-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 2px var(--space-sm);
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.fxdata-hex-toggle:hover {
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--color-text-secondary);
+}
+
+.fxdata-preview-hex-body {
+  display: none;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  background: rgba(0, 0, 0, 0.3);
+  word-break: break-all;
+}
+
+.fxdata-preview-hex-body.open {
+  display: block;
+}
+
+/* ---------------------------------------------------------------------------
+   Right column — tabbed section + accordion + downloads
+   --------------------------------------------------------------------------- */
+
+/* Tabbed section fills available space in right column */
+.fxdata-tabbed-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fxdata-tab-bar {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fxdata-tab {
+  flex: 1;
+  padding: 4px var(--space-sm);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  user-select: none;
+}
+
+.fxdata-tab:hover {
+  color: var(--color-text-secondary);
+}
+
+.fxdata-tab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-primary);
+}
+
+.fxdata-tab-content {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fxdata-tab-content.active {
+  display: flex;
+}
+
+/* Source textarea inside tab */
+.fxdata-tab-content .fxdata-source-textarea {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Structured list and memory map inside tab */
+.fxdata-tab-content .fxdata-structured-list {
+  flex: 1 1 auto;
+  min-height: 60px;
+  overflow-y: auto;
+}
+
+.fxdata-tab-content .fxdata-map-subheader {
+  flex: 0 0 auto;
+}
+
+.fxdata-tab-content .fxdata-memory-map {
+  flex: 0 0 auto;
+  max-height: 120px;
+}
+
+.fxdata-combined-section .fxdata-memory-summary {
+  flex: 0 0 auto;
+}
+
+/* Subheader divider between structured list and memory layout */
+.fxdata-map-subheader {
+  padding: 3px var(--space-sm);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Build output accordion
+   --------------------------------------------------------------------------- */
+
+.fxdata-build-accordion {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fxdata-accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-bg-elevated);
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  user-select: none;
+}
+
+.fxdata-accordion-toggle:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+}
+
+.fxdata-accordion-toggle.has-errors {
+  color: var(--color-danger);
+}
+
+.fxdata-accordion-arrow {
+  font-size: 10px;
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.fxdata-accordion-toggle[aria-expanded="true"] .fxdata-accordion-arrow {
+  transform: rotate(180deg);
+}
+
+/* Body is hidden by default; shown by adding .open class via JS */
+.fxdata-accordion-body {
+  display: none;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+  font-size: var(--font-size-xs);
+}
+
+.fxdata-accordion-body.open {
+  display: block;
+}
+
+/* Download buttons at top of right column */
+.fxdata-build-actions {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--color-bg-elevated);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive: stack layout on narrow screens
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .fxdata-editor-layout {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .fxdata-resize-handle {
+    display: none;
+  }
+
+  .fxdata-panel-left,
+  .fxdata-panel-center,
+  .fxdata-panel-right {
+    flex: 0 0 auto;
+    width: 100% !important;
+    max-height: 400px;
+  }
+
+  .fxdata-panel-center {
+    min-height: 300px;
+  }
+
+  .fxdata-center-preview-section {
+    flex: 1;
+    min-height: 200px;
+  }
+}

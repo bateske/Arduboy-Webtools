@@ -9,6 +9,7 @@
 import './ui/styles/variables.css';
 import './ui/styles/main.css';
 import './ui/styles/components.css';
+import './ui/styles/fxdata.css';
 
 // UI helpers
 import { TabController } from './ui/tabs.js';
@@ -20,6 +21,7 @@ import { CartEditor } from './ui/cartEditor.js';
 import { PackageEditor } from './ui/packageEditor.js';
 import { ImageConverter } from './ui/imageConverter.js';
 import { MusicEditor } from './ui/musicEditor.js';
+import { FxDataEditor } from './ui/fxdataEditor.js';
 
 // Core library
 import {
@@ -78,9 +80,10 @@ const tabs = new TabController(
   $$('.panel'),
   'active',
   'panel',
+  'activeMainTab',
 );
-// Activate default tab
-tabs.activate('sketch');
+// Activate saved tab or default
+tabs.activate(localStorage.getItem('activeMainTab') || 'sketch');
 
 // ---------------------------------------------------------------------------
 // Progress Controller
@@ -677,14 +680,16 @@ const DROP_ROUTES = {
   '.arduboy': { tabs: ['sketch', 'package', 'cart'], defaultTab: 'package' },
   '.bin':     { tabs: ['fx', 'cart', 'eeprom'], defaultTab: 'fx' },
   '.eep':     { tabs: ['eeprom'], defaultTab: 'eeprom' },
-  '.png':     { tabs: ['image'], defaultTab: 'image' },
-  '.jpg':     { tabs: ['image'], defaultTab: 'image' },
-  '.jpeg':    { tabs: ['image'], defaultTab: 'image' },
-  '.gif':     { tabs: ['image'], defaultTab: 'image' },
-  '.bmp':     { tabs: ['image'], defaultTab: 'image' },
-  '.webp':    { tabs: ['image'], defaultTab: 'image' },
+  '.png':     { tabs: ['image', 'fxdata'], defaultTab: 'image' },
+  '.jpg':     { tabs: ['image', 'fxdata'], defaultTab: 'image' },
+  '.jpeg':    { tabs: ['image', 'fxdata'], defaultTab: 'image' },
+  '.gif':     { tabs: ['image', 'fxdata'], defaultTab: 'image' },
+  '.bmp':     { tabs: ['image', 'fxdata'], defaultTab: 'image' },
+  '.webp':    { tabs: ['image', 'fxdata'], defaultTab: 'image' },
   '.mid':     { tabs: ['music'], defaultTab: 'music' },
   '.midi':    { tabs: ['music'], defaultTab: 'music' },
+  '.txt':     { tabs: ['fxdata'], defaultTab: 'fxdata' },
+  '.zip':     { tabs: ['fxdata'], defaultTab: 'fxdata' },
 };
 
 const TAB_LABELS = {
@@ -695,6 +700,7 @@ const TAB_LABELS = {
   image: 'Image Converter',
   package: 'Package Editor',
   music: 'Music Editor',
+  fxdata: 'FX Data Editor',
 };
 
 // Build full-page drop overlay
@@ -814,6 +820,10 @@ async function handleDroppedFile(file, tab) {
       await musicEditor.loadFile(file);
       showToast(`Loaded: ${file.name}`, 'info');
       break;
+
+    case 'fxdata':
+      await fxdataEditor.handleDrop(file);
+      break;
   }
 }
 
@@ -903,6 +913,12 @@ const imageConverter = new ImageConverter();
 // ---------------------------------------------------------------------------
 
 const musicEditor = new MusicEditor();
+
+// ---------------------------------------------------------------------------
+// FX Data Editor
+// ---------------------------------------------------------------------------
+
+const fxdataEditor = new FxDataEditor();
 
 // ---------------------------------------------------------------------------
 // Init

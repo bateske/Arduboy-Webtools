@@ -25,9 +25,10 @@
         <button class="tab-btn" data-panel="fx">FX Flash</button>
         <button class="tab-btn" data-panel="eeprom">EEPROM</button>
         <button class="tab-btn" data-panel="cart">Cart Editor</button>
-        <button class="tab-btn" data-panel="image">Image</button>
         <button class="tab-btn" data-panel="package">Package</button>
+        <button class="tab-btn" data-panel="image">Image</button>
         <button class="tab-btn" data-panel="music">Music</button>
+        <button class="tab-btn" data-panel="fxdata">FX Data</button>
       </div>
       <div class="navbar-actions">
         <button class="btn-reset" id="btn-reset" disabled title="Reset device into bootloader">
@@ -656,6 +657,220 @@
         <div class="action-group hidden" id="mus-warnings-group">
           <h3>Warnings</h3>
           <ul id="mus-warnings-list" class="mus-warnings-list"></ul>
+        </div>
+      </section>
+
+      <!-- FX Data Editor Panel -->
+      <section id="panel-fxdata" class="panel">
+        <div class="fxdata-toolbar">
+          <div class="fxdata-toolbar-left">
+            <h2>FX Data Editor</h2>
+            <p class="panel-description">Create and build FX data for Arduboy games.</p>
+          </div>
+          <div class="fxdata-toolbar-right">
+            <button class="btn btn-secondary btn-sm" id="fxdata-btn-new" title="Start a new empty FX data project">New</button>
+            <button class="btn btn-secondary btn-sm" id="fxdata-btn-import" title="Import project files or ZIP">Import</button>
+            <input type="file" id="fxdata-import-input" multiple hidden>
+            <input type="file" id="fxdata-import-folder" webkitdirectory hidden>
+            <button class="btn btn-secondary btn-sm" id="fxdata-btn-export" title="Export project as ZIP" disabled>Export ZIP</button>
+            <button class="btn btn-primary btn-sm" id="fxdata-btn-build" title="Build fxdata outputs">Build</button>
+            <button class="btn btn-accent btn-sm" id="fxdata-btn-push" title="Push project to Arduboy Cloud App" disabled>Push to Cloud</button>
+          </div>
+        </div>
+
+        <!-- Main editor layout: 3-column resizable -->
+        <div class="fxdata-editor-layout" id="fxdata-editor-layout">
+
+          <!-- Left: FX Entries (top) + Assets (bottom) + Settings -->
+          <div class="fxdata-panel-left" id="fxdata-col-left">
+
+            <!-- FX Entries graphical editor -->
+            <div class="fxdata-entries-section">
+              <div class="fxdata-panel-header">
+                <span>FX Data</span>
+              </div>
+
+              <!-- Draggable entry cards -->
+              <div class="fxdata-entries-list" id="fxdata-entries-list">
+                <div class="fxdata-empty-entries">
+                  <p>No entries yet.</p>
+                  <p class="fxdata-hint">Click + below to add an entry, or import a fxdata.txt.</p>
+                </div>
+              </div>
+
+              <!-- Add button: JS moves this into the list as last child on every render -->
+              <div class="fxdata-add-row" id="fxdata-add-row">
+                <div class="fxdata-add-hub" id="fxdata-add-hub">
+                  <!-- Button row first — chips expand BELOW so button never gets pushed -->
+                  <div class="fxdata-add-btn-row">
+                    <button class="fxdata-add-main-btn" id="fxdata-btn-add-entry" title="Add entry">
+                      <span class="fxdata-add-plus">+</span>
+                    </button>
+                  </div>
+                  <!-- Chip row expands downward when open -->
+                  <div class="fxdata-add-chips-row">
+                    <button class="fxdata-add-flyout-chip fxdata-type-data" data-category="number">Number</button>
+                    <button class="fxdata-add-flyout-chip fxdata-type-data" data-category="string">String</button>
+                    <button class="fxdata-add-flyout-chip fxdata-type-asset" data-category="image">Image</button>
+                    <button class="fxdata-add-flyout-chip fxdata-type-asset" data-category="raw">Raw</button>
+                    <button class="fxdata-add-flyout-chip fxdata-type-directive" data-category="directive">Directive</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resize handle between FX Entries and Assets -->
+            <div class="fxdata-resize-handle fxdata-resize-vertical" id="fxdata-resize-entries"></div>
+
+            <!-- Asset files (images, raw binaries) -->
+            <div class="fxdata-project-section">
+              <div class="fxdata-panel-header">
+                <span>Assets</span>
+                <div class="fxdata-assets-actions">
+                  <label class="fxdata-overwrite-label" title="When checked, adding files with existing names will overwrite without asking">
+                    <input type="checkbox" id="fxdata-overwrite-toggle">
+                    <span>Overwrite</span>
+                  </label>
+                  <button class="fxdata-assets-btn" id="fxdata-btn-add-file" title="Add asset file">+ Asset</button>
+                  <button class="fxdata-assets-btn" id="fxdata-btn-add-folder" title="New folder">+ Folder</button>
+                  <input type="file" id="fxdata-add-file-input" multiple hidden>
+                </div>
+              </div>
+              <div class="fxdata-file-tree" id="fxdata-file-tree">
+                <div class="fxdata-empty-tree">
+                  <p class="fxdata-hint">Images and binary files appear here.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Resize handle: left ↔ center -->
+          <div class="fxdata-resize-handle" id="fxdata-resize-1" title="Drag to resize"></div>
+
+          <!-- Center: Preview (top, fixed height + resizable) + fxdata.txt (fills rest) -->
+          <div class="fxdata-panel-center" id="fxdata-col-center">
+
+            <!-- Preview at top with fixed resizable height -->
+            <div class="fxdata-center-preview-section" id="fxdata-preview-section">
+              <div class="fxdata-panel-header">Preview</div>
+              <div id="fxdata-asset-preview" class="fxdata-asset-preview">
+                <div class="fxdata-empty-preview">
+                  <p>Select an asset to preview.</p>
+                </div>
+              </div>
+
+              <!-- Image controls — shown only when an image is being previewed -->
+              <div id="fxdata-image-controls" class="fxdata-image-controls hidden">
+                <div class="fxdata-image-controls-row">
+                  <label class="fxdata-setting">
+                    <span>Threshold:</span>
+                    <input type="range" id="fxdata-threshold" min="0" max="255" value="128" class="fxdata-slider">
+                    <span id="fxdata-threshold-value" class="fxdata-slider-value">128</span>
+                  </label>
+                  <span class="fxdata-global-note">global</span>
+                </div>
+                <div class="fxdata-image-controls-row">
+                  <label class="fxdata-setting fxdata-override-toggle">
+                    <input type="checkbox" id="fxdata-sprite-override" class="fxdata-checkbox">
+                    <span>Override sprite settings</span>
+                  </label>
+                </div>
+                <div id="fxdata-sprite-override-fields" class="fxdata-sprite-override-fields hidden">
+                  <label class="fxdata-setting">
+                    <span>W:</span>
+                    <input type="number" id="fxdata-sprite-width" class="fxdata-sprite-input" min="1" max="1024" value="0">
+                  </label>
+                  <label class="fxdata-setting">
+                    <span>H:</span>
+                    <input type="number" id="fxdata-sprite-height" class="fxdata-sprite-input" min="1" max="1024" value="0">
+                  </label>
+                  <label class="fxdata-setting">
+                    <span>Spacing:</span>
+                    <input type="number" id="fxdata-sprite-spacing" class="fxdata-sprite-input" min="0" max="256" value="0">
+                  </label>
+                </div>
+                <!-- Frames view -->
+                <div id="fxdata-frames-view" class="fxdata-frames-view hidden"></div>
+              </div>
+
+              <!-- Hex data accordion (within preview section) -->
+              <div class="fxdata-preview-hex-accordion fxdata-accordion-hidden">
+                <button class="fxdata-accordion-toggle fxdata-hex-toggle" id="fxdata-hex-toggle" aria-expanded="false">
+                  <span class="fxdata-accordion-label">Hex Data</span>
+                  <span class="fxdata-accordion-arrow">▼</span>
+                </button>
+                <div id="fxdata-preview-hex" class="fxdata-preview-hex-body fxdata-accordion-body"></div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Resize handle: center ↔ right -->
+          <div class="fxdata-resize-handle" id="fxdata-resize-2" title="Drag to resize"></div>
+
+          <!-- Right: Structured Memory Map + Memory Layout + Build Accordion + Downloads -->
+          <div class="fxdata-panel-right fxdata-panel" id="fxdata-col-right">
+
+            <!-- Download header + actions -->
+            <div class="fxdata-download-container hidden" id="fxdata-download-container">
+              <!-- Download buttons at top — shown after a successful build -->
+              <div class="fxdata-panel-header">Download</div>
+              <div id="fxdata-build-actions" class="fxdata-build-actions hidden">
+                <button class="btn btn-sm btn-secondary" id="fxdata-dl-header" title="Download fxdata.h">fxdata.h</button>
+                <button class="btn btn-sm btn-secondary" id="fxdata-dl-data" title="Download fxdata-data.bin">data.bin</button>
+                <button class="btn btn-sm btn-secondary" id="fxdata-dl-dev" title="Download fxdata.bin (dev)">dev.bin</button>
+                <button class="btn btn-sm btn-secondary hidden" id="fxdata-dl-save" title="Download fxdata-save.bin">save.bin</button>
+              </div>
+            </div>
+
+            <!-- Build accordion + tabbed section -->
+            <div class="fxdata-content-container">
+              <!-- Build output accordion -->
+              <div class="fxdata-build-accordion" id="fxdata-build-accordion">
+                <button class="fxdata-accordion-toggle" id="fxdata-build-accordion-toggle" aria-expanded="false">
+                  <span class="fxdata-accordion-label">Build Output</span>
+                  <span class="fxdata-accordion-arrow">▼</span>
+                </button>
+                <div id="fxdata-build-output" class="fxdata-build-output fxdata-accordion-body">
+                  <div class="fxdata-empty-output">No build results yet.</div>
+                </div>
+              </div>
+
+              <!-- Tabbed section: Memory Map / fxdata.txt -->
+              <div class="fxdata-tabbed-section" id="fxdata-right-tabs">
+                <div class="fxdata-tab-bar">
+                  <button class="fxdata-tab active" data-tab="memory-map">Memory Map</button>
+                  <button class="fxdata-tab" data-tab="fxdata-source">fxdata.txt</button>
+                </div>
+
+                <!-- Tab: Memory Map -->
+                <div class="fxdata-tab-content active" id="fxdata-tab-memory-map" data-tab="memory-map">
+                  <div id="fxdata-structured-list" class="fxdata-structured-list">
+                    <div class="fxdata-empty-structured">
+                      <p>Build the project to see structured entries.</p>
+                    </div>
+                  </div>
+                  <div class="fxdata-map-subheader">Memory Layout</div>
+                  <div id="fxdata-memory-map" class="fxdata-memory-map">
+                    <div class="fxdata-empty-map">Build to see memory layout.</div>
+                  </div>
+                  <div id="fxdata-memory-summary" class="fxdata-memory-summary hidden"></div>
+                </div>
+
+                <!-- Tab: fxdata.txt source -->
+                <div class="fxdata-tab-content" id="fxdata-tab-fxdata-source" data-tab="fxdata-source">
+                  <div class="fxdata-source-header">
+                    <span id="fxdata-source-filename" class="fxdata-source-filename">—</span>
+                    <span id="fxdata-dirty-indicator" class="fxdata-dirty hidden">*</span>
+                  </div>
+                  <textarea id="fxdata-source-editor" class="fxdata-source-textarea" spellcheck="false"
+                    placeholder="// FX Data source file&#10;// Import a project or start typing...&#10;&#10;image_t mySprite = &quot;assets/sprite.png&quot;&#10;&#10;uint8_t data[] = {&#10;  0x01, 0x02, 0x03&#10;};">
+                  </textarea>
+                </div>
+              </div>
+            </div><!-- /.fxdata-content-container -->
+          </div><!-- /.fxdata-panel-right -->
         </div>
       </section>
     </main>

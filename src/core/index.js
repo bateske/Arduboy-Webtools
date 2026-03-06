@@ -29,3 +29,6 @@ export * from './utils/binary.js';
 
 // Music
 export * from './music/index.js';
+
+// FX Data
+export * from './fxdata/index.js';
