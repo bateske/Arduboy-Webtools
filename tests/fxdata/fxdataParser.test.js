@@ -140,9 +140,13 @@ uint8_t third = 0xAB`;
     it('should generate header lines for each label', async () => {
       const source = `uint8_t myData = 0x42`;
       const result = await parseFxData(source, 'test.txt', nullCallbacks);
-      expect(result.headerLines.length).toBeGreaterThan(0);
+      expect(result.headerLines.length).toBeGreaterThan(1);
+      // First line is the usage example comment
       expect(result.headerLines[0]).toContain('myData');
-      expect(result.headerLines[0]).toContain('0x000000');
+      expect(result.headerLines[0]).toContain('FX::readIndexedUInt8');
+      // Second line is the constexpr definition
+      expect(result.headerLines[1]).toContain('myData');
+      expect(result.headerLines[1]).toContain('0x000000');
     });
   });
 

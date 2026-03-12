@@ -142,6 +142,15 @@ export async function buildFxData(project, entryFile, options = {}) {
   const dataPadding = dataPages * 256 - dataSize;
   const savePadding = savePages * 256 - saveSize;
 
+  if (saveSize > 4096) {
+    result.diagnostics.push({
+      severity: 'warning',
+      message: `Save section is ${saveSize} bytes, which exceeds the 4096-byte (4 KB) limit.`,
+      file: entryFile,
+      line: 0,
+    });
+  }
+
   const fxDataPage = 65536 - dataPages - savePages;
   const fxSavePage = saveSize > 0 ? 65536 - savePages : null;
 

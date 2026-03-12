@@ -825,12 +825,18 @@
             <!-- Download header + actions -->
             <div class="fxdata-download-container hidden" id="fxdata-download-container">
               <!-- Download buttons at top — shown after a successful build -->
-              <div class="fxdata-panel-header">Download</div>
+              <div class="fxdata-panel-header">
+                Download
+                <button class="fxdata-help-btn" id="fxdata-download-help" title="What are these files?">?</button>
+              </div>
               <div id="fxdata-build-actions" class="fxdata-build-actions hidden">
-                <button class="btn btn-sm btn-secondary" id="fxdata-dl-header" title="Download fxdata.h">fxdata.h</button>
-                <button class="btn btn-sm btn-secondary" id="fxdata-dl-data" title="Download fxdata-data.bin">data.bin</button>
-                <button class="btn btn-sm btn-secondary" id="fxdata-dl-dev" title="Download fxdata.bin (dev)">dev.bin</button>
-                <button class="btn btn-sm btn-secondary hidden" id="fxdata-dl-save" title="Download fxdata-save.bin">save.bin</button>
+                <div class="fxdata-dl-grid">
+                  <button class="btn btn-sm btn-secondary fxdata-dl-btn" id="fxdata-dl-header" title="Download fxdata.h"><svg class="fxdata-dl-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v9m0 0L5 7m3 3 3-3M2 12v2h12v-2"/></svg>fxdata.h</button>
+                  <button class="btn btn-sm btn-secondary fxdata-dl-btn" id="fxdata-dl-dev" title="Download fxdata.bin"><svg class="fxdata-dl-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v9m0 0L5 7m3 3 3-3M2 12v2h12v-2"/></svg>fxdata.bin</button>
+                  <button class="btn btn-sm btn-secondary fxdata-dl-btn" id="fxdata-dl-data" title="Download fxdata-data.bin"><svg class="fxdata-dl-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v9m0 0L5 7m3 3 3-3M2 12v2h12v-2"/></svg>fxdata-data.bin</button>
+                  <button class="btn btn-sm btn-secondary fxdata-dl-btn hidden" id="fxdata-dl-save" title="Download fxdata-save.bin"><svg class="fxdata-dl-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v9m0 0L5 7m3 3 3-3M2 12v2h12v-2"/></svg>fxdata-save.bin</button>
+                </div>
+                <button class="btn btn-sm btn-secondary fxdata-dl-btn fxdata-dl-all" id="fxdata-dl-all" title="Download all as ZIP"><svg class="fxdata-dl-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v9m0 0L5 7m3 3 3-3M2 12v2h12v-2"/></svg>All</button>
               </div>
             </div>
 

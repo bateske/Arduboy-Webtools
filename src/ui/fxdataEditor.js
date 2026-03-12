@@ -13,6 +13,7 @@ import { buildFxData } from '../core/fxdata/fxdataBuild.js';
 import { parseDimensionsFromFilename } from '../core/fxdata/fxdataImageEncoder.js';
 import { downloadBlob } from './files.js';
 import { showToast } from './toast.js';
+import JSZip from 'jszip';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -74,6 +75,17 @@ function getMemoryMapTypeCategory(type) {
   if (['image', 'raw'].includes(type)) return 'asset';
   if (['align', 'save', 'datasection'].includes(type)) return 'directive';
   return 'data';
+}
+
+/** Return valid section markers (savesection/datasection) that have data after them */
+function getValidSectionMarkers(memoryMap) {
+  if (!memoryMap || memoryMap.length === 0) return [];
+  const nonZero = memoryMap.filter(e => e.size > 0);
+  return memoryMap.filter(e =>
+    e.size === 0 &&
+    (e.type === 'save' || e.type === 'datasection') &&
+    nonZero.some(ne => ne.offset >= e.offset)
+  );
 }
 
 /** Whether this type has a name field rendered */
@@ -441,6 +453,7 @@ export class FxDataEditor {
     this._dlData = $('#fxdata-dl-data');
     this._dlDev = $('#fxdata-dl-dev');
     this._dlSave = $('#fxdata-dl-save');
+    this._dlAll = $('#fxdata-dl-all');
 
     // Settings / image controls
     this._thresholdSlider = $('#fxdata-threshold');
@@ -597,6 +610,28 @@ export class FxDataEditor {
     this._dlData?.addEventListener('click', () => this._downloadFile('dataBin', 'fxdata-data.bin'));
     this._dlDev?.addEventListener('click', () => this._downloadFile('devBin', 'fxdata.bin'));
     this._dlSave?.addEventListener('click', () => this._downloadFile('saveBin', 'fxdata-save.bin'));
+    this._dlAll?.addEventListener('click', () => this._downloadAllAsZip());
+
+    // Download help popover
+    const helpBtn = $('#fxdata-download-help');
+    helpBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const existing = document.querySelector('.fxdata-download-help-popover');
+      if (existing) { existing.remove(); return; }
+      const pop = document.createElement('div');
+      pop.className = 'fxdata-download-help-popover';
+      pop.innerHTML = `
+        <div class="fxdata-help-item"><strong>fxdata.h</strong> C++ header with constants and symbol addresses. Include this in your Arduboy sketch.</div>
+        <div class="fxdata-help-item"><strong>fxdata.bin</strong> Combined dev binary (data + save, page-padded). Use with the emulator or for development flashing.</div>
+        <div class="fxdata-help-item"><strong>fxdata-data.bin</strong> Raw data section only. Use with the FX flash writer to upload game assets.</div>
+        <div class="fxdata-help-item"><strong>fxdata-save.bin</strong> Raw save section only. Appears when a savesection directive is used.</div>`;
+      const rect = helpBtn.getBoundingClientRect();
+      pop.style.top = `${rect.bottom + 4}px`;
+      pop.style.right = `${document.documentElement.clientWidth - rect.right}px`;
+      document.body.appendChild(pop);
+      const close = (ev) => { if (!pop.contains(ev.target) && ev.target !== helpBtn) { pop.remove(); document.removeEventListener('pointerdown', close); } };
+      document.addEventListener('pointerdown', close);
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -2511,25 +2546,39 @@ export class FxDataEditor {
     const nonZeroEntries = result.memoryMap.filter(e => e.size > 0);
 
     // Create continuous horizontal bar
+    const saveStart = result.saveSize > 0 ? result.dataSize : -1;
     const barSegments = nonZeroEntries.map((entry) => {
       const fraction = totalSize > 0 ? entry.size / totalSize : 0;
       const percentage = (fraction * 100).toFixed(1);
+      const inSave = saveStart >= 0 && entry.offset >= saveStart;
       return `
-        <div class="fxdata-map-bar-segment type-${entry.type}" 
+        <div class="fxdata-map-bar-segment type-${entry.type}${inSave ? ' save-region' : ''}"
              style="width: ${percentage}%"
-             title="${escapeHtml(entry.name)} - ${formatSize(entry.size)}"
-             data-offset="${entry.offset}" 
+             title="${escapeHtml(entry.name)} - ${formatSize(entry.size)}${inSave ? ' (save)' : ''}"
+             data-offset="${entry.offset}"
              data-name="${escapeHtml(entry.name)}"
              data-size="${entry.size}">
           <span class="fxdata-map-label">${escapeHtml(entry.name)}</span>
         </div>`;
     });
 
+    // Section boundary markers (savesection / datasection)
+    const sectionMarkers = getValidSectionMarkers(result.memoryMap);
+    const markerLines = sectionMarkers.map(marker => {
+      const pct = totalSize > 0 ? (marker.offset / totalSize * 100).toFixed(2) : 0;
+      return `
+        <div class="fxdata-section-marker type-${marker.type}"
+             style="left: ${pct}%"
+             title="${escapeHtml(marker.name)} at offset ${marker.offset}">
+        </div>`;
+    }).join('');
+
     if (this._memoryMap) {
       this._memoryMap.innerHTML = `
         <div class="fxdata-map-bar-container">
           <div class="fxdata-map-bar-track">
             ${barSegments.join('')}
+            ${markerLines}
           </div>
         </div>`;
       
@@ -2600,18 +2649,37 @@ export class FxDataEditor {
       mapByOffset.set(entry.offset, entry);
     }
 
-    const html = result.symbols.map((sym) => {
-      const mapEntry = mapByOffset.get(sym.offset);
+    // Merge symbols with valid section markers, sorted by offset
+    const sectionMarkers = getValidSectionMarkers(result.memoryMap);
+    const saveStart = result.saveSize > 0 ? result.dataSize : -1;
+    const items = [
+      ...result.symbols.map(sym => ({ kind: 'symbol', ...sym })),
+      ...sectionMarkers.map(m => ({ kind: 'section', name: m.name, offset: m.offset, type: m.type })),
+    ];
+    items.sort((a, b) => a.offset - b.offset || (a.kind === 'section' ? -1 : 1));
+
+    const html = items.map((item) => {
+      if (item.kind === 'section') {
+        const offsetHex = `0x${item.offset.toString(16).padStart(6, '0').toUpperCase()}`;
+        const label = item.type === 'save' ? 'Save Section' : 'Data Section';
+        return `
+          <div class="fxdata-struct-divider fxdata-type-directive">
+            <span class="fxdata-struct-divider-label">${label}</span>
+            <span class="fxdata-struct-divider-offset">${offsetHex}</span>
+          </div>`;
+      }
+      const mapEntry = mapByOffset.get(item.offset);
       const type = mapEntry?.type || 'data';
       const size = mapEntry?.size || '?';
-      const offsetHex = `0x${sym.offset.toString(16).padStart(6, '0').toUpperCase()}`;
+      const offsetHex = `0x${item.offset.toString(16).padStart(6, '0').toUpperCase()}`;
+      const inSave = saveStart >= 0 && item.offset >= saveStart;
 
       const category = getMemoryMapTypeCategory(type);
       return `
-        <div class="fxdata-struct-entry" data-offset="${sym.offset}" data-name="${escapeHtml(sym.name)}">
+        <div class="fxdata-struct-entry${inSave ? ' save-region' : ''}" data-offset="${item.offset}" data-name="${escapeHtml(item.name)}">
           <div class="fxdata-struct-header">
             <span class="fxdata-struct-type fxdata-type-${category}">${type}</span>
-            <span class="fxdata-struct-name">${escapeHtml(sym.name)}</span>
+            <span class="fxdata-struct-name">${escapeHtml(item.name)}</span>
             <span class="fxdata-struct-offset">${offsetHex} (${size} B)</span>
           </div>
         </div>`;
@@ -3442,6 +3510,19 @@ export class FxDataEditor {
     downloadBlob(data, filename, mimeType);
   }
 
+  async _downloadAllAsZip() {
+    if (!this._lastBuild) return;
+    const zip = new JSZip();
+    zip.file('fxdata.h', this._lastBuild.header);
+    zip.file('fxdata.bin', this._lastBuild.devBin);
+    zip.file('fxdata-data.bin', this._lastBuild.dataBin);
+    if (this._lastBuild.saveBin) {
+      zip.file('fxdata-save.bin', this._lastBuild.saveBin);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    downloadBlob(blob, 'fxdata.zip', 'application/zip');
+  }
+
   // ---------------------------------------------------------------------------
   // Drop handler (called from main.js)
   // ---------------------------------------------------------------------------
@@ -3482,9 +3563,13 @@ export class FxDataEditor {
       showToast(`Parsed ${file.name} → ${this._entries.length} entr${this._entries.length === 1 ? 'y' : 'ies'}`, 'success');
 
     } else {
-      // Asset file
-      const buffer = await file.arrayBuffer();
+      // Asset file — check for collision before overwriting
       const path = file.name;
+      if (this._project.hasFile(path)) {
+        const allowed = await this._confirmOverwrite(path);
+        if (!allowed) return;
+      }
+      const buffer = await file.arrayBuffer();
       this._project.addFile(path, new Uint8Array(buffer));
       this._renderAssetTree();
       if (this._btnExport) this._btnExport.disabled = false;

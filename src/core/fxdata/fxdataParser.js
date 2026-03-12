@@ -206,6 +206,15 @@ export async function parseFxData(sourceText, filename, callbacks, options = {})
   function addLabel(name, offset, type = null) {
     flushPendingNumericEntry();
     symbols.push({ name, offset });
+
+    // Add usage example comment based on data type (skip images — handled after resolution)
+    if (type !== TYPE.IMAGE) {
+      const example = getUsageExample(name, type);
+      if (example) {
+        headerLines.push(`${indent}// ${example}`);
+      }
+    }
+
     headerLines.push(`${indent}constexpr uint24_t ${name} = 0x${offset.toString(16).padStart(6, '0').toUpperCase()};`);
     // Track entry for memory map
     currentEntryStart = offset;
@@ -375,9 +384,19 @@ export async function parseFxData(sourceText, filename, callbacks, options = {})
             const result = await callbacks.resolveImage(inner, currentFile, { threshold });
             appendBytes(result.bytes);
 
-            // Add image dimension constants to header
+            // Add image usage example and dimension constants to header
             const lastSymbol = symbols.length > 0 ? symbols[symbols.length - 1] : null;
             if (lastSymbol) {
+              // Insert usage example comment before the constexpr line for this label
+              const mode = result.hasTransparency ? 'dbmMasked' : 'dbmNormal';
+              const exampleComment = `${indent}// FX::drawBitmap(x, y, ${lastSymbol.name}, frame, ${mode});`;
+              const constIdx = headerLines.lastIndexOf(
+                `${indent}constexpr uint24_t ${lastSymbol.name} = 0x${lastSymbol.offset.toString(16).padStart(6, '0').toUpperCase()};`
+              );
+              if (constIdx >= 0) {
+                headerLines.splice(constIdx, 0, exampleComment);
+              }
+
               const { widthName, heightName, framesName, framesType } =
                 getImageConstantNamesFromLabel(lastSymbol.name, result.frames);
               writeHeader(`${indent}constexpr uint16_t ${widthName}  = ${result.width};`);
@@ -698,6 +717,32 @@ function processEscapes(s) {
       default: return match;
     }
   });
+}
+
+/**
+ * Get a usage example comment for a data type.
+ * Returns null if no example is appropriate (e.g. for images, handled separately).
+ * @param {string} name - Symbol name
+ * @param {number|null} type - TYPE enum value
+ * @returns {string|null}
+ */
+function getUsageExample(name, type) {
+  switch (type) {
+    case TYPE.UINT8:
+      return `FX::readIndexedUInt8(${name}, index);`;
+    case TYPE.UINT16:
+      return `FX::readIndexedUInt16(${name}, index);`;
+    case TYPE.UINT24:
+      return `FX::readIndexedUInt24(${name}, index);`;
+    case TYPE.UINT32:
+      return `FX::readIndexedUInt32(${name}, index);`;
+    case TYPE.STRING:
+      return `FX::drawString(${name});`;
+    case TYPE.RAW:
+      return `FX::readDataBytes(${name}, buffer, length);`;
+    default:
+      return null;
+  }
 }
 
 /**
